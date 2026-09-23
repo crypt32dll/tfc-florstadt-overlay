@@ -1,6 +1,6 @@
 import "server-only";
 
-import { Logger, type ILogObj } from "tslog";
+import { type ILogObj, Logger } from "tslog";
 
 const isProd = process.env.NODE_ENV === "production";
 

@@ -46,7 +46,12 @@ describe("applyMutation", () => {
 
   it("auto-completes set at 5:3", () => {
     let s = createInitialState("TFC", "Gegner");
-    s = { ...s, activeView: "live", teamA: { ...s.teamA, score: 4 }, teamB: { ...s.teamB, score: 3 } };
+    s = {
+      ...s,
+      activeView: "live",
+      teamA: { ...s.teamA, score: 4 },
+      teamB: { ...s.teamB, score: 3 },
+    };
     s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
     expect(s.teamA.score).toBe(0);
     expect(s.sets.a).toBe(1);
@@ -96,7 +101,11 @@ describe("applyMutation", () => {
 
   it("setSfx updates flags", () => {
     const s0 = createInitialState();
-    const s1 = applyMutation(s0, { type: "setSfx", enabled: false, volume: 0.2 });
+    const s1 = applyMutation(s0, {
+      type: "setSfx",
+      enabled: false,
+      volume: 0.2,
+    });
     expect(s1.sfxEnabled).toBe(false);
     expect(s1.sfxVolume).toBe(0.2);
   });

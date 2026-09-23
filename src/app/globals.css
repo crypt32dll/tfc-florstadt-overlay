@@ -21,9 +21,6 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --duration-fast: 180ms;
   --duration-med: 260ms;
-
-  --font-open-sans: "Open Sans", sans-serif;
-  --font-teko: "Teko", sans-serif;
 }
 
 @theme inline {
@@ -86,9 +83,21 @@ button:disabled,
   isolation: isolate;
   min-height: 100dvh;
   background:
-    radial-gradient(ellipse 80% 50% at 15% -10%, var(--brand-accent-glow), transparent 55%),
-    radial-gradient(ellipse 70% 45% at 95% 10%, rgba(6, 147, 227, 0.25), transparent 50%),
-    radial-gradient(ellipse 60% 40% at 50% 110%, rgba(6, 147, 227, 0.18), transparent 55%),
+    radial-gradient(
+      ellipse 80% 50% at 15% -10%,
+      var(--brand-accent-glow),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 70% 45% at 95% 10%,
+      rgba(6, 147, 227, 0.25),
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 50% 110%,
+      rgba(6, 147, 227, 0.18),
+      transparent 55%
+    ),
     linear-gradient(165deg, #05080f 0%, #0b1220 45%, #071018 100%);
   color: var(--foreground);
 }
@@ -297,8 +306,16 @@ button:disabled,
 
 .overlay-soon-bg {
   background:
-    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(6, 147, 227, 0.35), transparent 55%),
-    radial-gradient(ellipse 50% 40% at 80% 90%, rgba(6, 147, 227, 0.15), transparent 50%),
+    radial-gradient(
+      ellipse 70% 50% at 50% 0%,
+      rgba(6, 147, 227, 0.35),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 50% 40% at 80% 90%,
+      rgba(6, 147, 227, 0.15),
+      transparent 50%
+    ),
     linear-gradient(180deg, #05080f 0%, #0a1220 55%, #05080f 100%);
 }
 

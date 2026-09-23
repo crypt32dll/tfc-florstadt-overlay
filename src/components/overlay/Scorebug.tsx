@@ -1,33 +1,29 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { formatTimer, getElapsedMs, normalizeState } from "@/lib/match/defaults";
+import {
+  formatTimer,
+  getElapsedMs,
+  normalizeState,
+} from "@/lib/match/defaults";
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
-import { useEffect, useState } from "react";
 
 function useLiveElapsed(state: MatchState) {
-  const [mounted, setMounted] = useState(false);
-  const [now, setNow] = useState(0);
+  const running = state.timer.running;
+  const now = useSyncExternalStore(
+    (onStoreChange) => {
+      if (!running) return () => {};
+      const id = window.setInterval(onStoreChange, 250);
+      return () => window.clearInterval(id);
+    },
+    () => Date.now(),
+    () => 0,
+  );
 
-  useEffect(() => {
-    setMounted(true);
-    setNow(Date.now());
-  }, []);
-
-  useEffect(() => {
-    if (!mounted || !state.timer.running) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
-  }, [
-    mounted,
-    state.timer.running,
-    state.timer.startedAt,
-    state.timer.elapsedMs,
-  ]);
-
-  if (!mounted || !state.timer.running) {
+  if (!running || now === 0) {
     return state.timer.elapsedMs;
   }
   return getElapsedMs(state, now);
@@ -48,7 +44,10 @@ export function Scorebug({ state: raw }: { state: MatchState }) {
       initial={reduceMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={reduceMotion ? undefined : { opacity: 0, y: 10 }}
-      transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+      transition={{
+        duration: reduceMotion ? 0 : 0.28,
+        ease: [0.22, 1, 0.36, 1],
+      }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-1.5 text-[0.65rem] tracking-[0.16em] text-white/70 uppercase md:px-5">

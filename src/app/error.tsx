@@ -6,7 +6,7 @@ import { clientLog } from "@/lib/logger.client";
 
 const log = clientLog("error-boundary");
 
-export default function Error({
+export default function AppError({
   error,
   reset,
 }: {
@@ -25,7 +25,11 @@ export default function Error({
           Fehler
         </h1>
         <p className="max-w-md text-sm text-muted">{error.message}</p>
-        <button type="button" onClick={reset} className="btn btn-primary px-6 text-xl">
+        <button
+          type="button"
+          onClick={reset}
+          className="btn btn-primary px-6 text-xl"
+        >
           Nochmal
         </button>
       </div>

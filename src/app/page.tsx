@@ -60,8 +60,8 @@ export default function HomePage() {
 }`}
             </pre>
             <p className="mt-3 text-xs text-muted">
-              So bleibt der Hintergrund transparent und nur Scoreboard /
-              Screens sind sichtbar.
+              So bleibt der Hintergrund transparent und nur Scoreboard / Screens
+              sind sichtbar.
             </p>
           </section>
         </aside>

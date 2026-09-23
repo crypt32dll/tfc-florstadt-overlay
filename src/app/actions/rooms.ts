@@ -2,23 +2,27 @@
 
 import { customAlphabet } from "nanoid";
 import { headers } from "next/headers";
+import { ZodError } from "zod";
+import { generatePin, hashPin, verifyPin } from "@/lib/auth/pin";
+import { checkPinRateLimit } from "@/lib/auth/rate-limit";
 import {
   assertRoomAuthorized,
   createRoomSession,
   getAuthorizedRoomId,
 } from "@/lib/auth/session";
-import { generatePin, hashPin, verifyPin } from "@/lib/auth/pin";
-import { checkPinRateLimit } from "@/lib/auth/rate-limit";
-import { applyMutation, createInitialState, normalizeState } from "@/lib/match/defaults";
+import { actionLog } from "@/lib/logger.server";
+import {
+  applyMutation,
+  createInitialState,
+  normalizeState,
+} from "@/lib/match/defaults";
 import {
   createRoomSchema,
   mutationSchema,
   verifyPinSchema,
 } from "@/lib/match/schema";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
-import { actionLog } from "@/lib/logger.server";
 import { getStore, hasSupabaseConfig } from "@/lib/store";
-import { ZodError } from "zod";
 
 const roomId = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 8);
 const log = actionLog("rooms");
@@ -32,7 +36,11 @@ export async function createRoom(input?: {
   teamA?: string;
   teamB?: string;
 }): Promise<
-  ActionResult<{ roomId: string; pin: string; storeMode: "memory" | "supabase" }>
+  ActionResult<{
+    roomId: string;
+    pin: string;
+    storeMode: "memory" | "supabase";
+  }>
 > {
   try {
     const parsed = createRoomSchema.parse({
@@ -74,7 +82,9 @@ export async function createRoom(input?: {
 
 export async function getRoomState(
   roomIdParam: string,
-): Promise<ActionResult<{ state: MatchState; storeMode: "memory" | "supabase" }>> {
+): Promise<
+  ActionResult<{ state: MatchState; storeMode: "memory" | "supabase" }>
+> {
   try {
     const store = await getStore();
     const room = await store.get(roomIdParam);
@@ -119,7 +129,11 @@ export async function verifyRoomPin(input: {
     try {
       await createRoomSession(parsed.roomId);
     } catch (sessionErr) {
-      log.error("session cookie failed after PIN ok", { roomId: parsed.roomId }, sessionErr);
+      log.error(
+        "session cookie failed after PIN ok",
+        { roomId: parsed.roomId },
+        sessionErr,
+      );
       const msg =
         sessionErr instanceof Error
           ? sessionErr.message
@@ -135,7 +149,10 @@ export async function verifyRoomPin(input: {
     }
     log.error("verifyRoomPin failed", { roomId: input.roomId }, e);
     const message =
-      e && typeof e === "object" && "message" in e && typeof e.message === "string"
+      e &&
+      typeof e === "object" &&
+      "message" in e &&
+      typeof e.message === "string"
         ? e.message
         : e instanceof Error
           ? e.message
@@ -161,10 +178,7 @@ async function applyAndSave(
   if (!room) return { ok: false, error: "Raum nicht gefunden" };
 
   const current = normalizeState(room.state);
-  if (
-    expectedRevision != null &&
-    current.revision !== expectedRevision
-  ) {
+  if (expectedRevision != null && current.revision !== expectedRevision) {
     log.warn("revision conflict", {
       roomId: roomIdParam,
       expected: expectedRevision,
@@ -196,7 +210,11 @@ export async function mutateRoom(
       log.warn("mutateRoom unauthorized", { roomId: roomIdParam });
       return { ok: false, error: "UNAUTHORIZED" };
     }
-    log.error("mutateRoom failed", { roomId: roomIdParam, mutation: mutationInput }, e);
+    log.error(
+      "mutateRoom failed",
+      { roomId: roomIdParam, mutation: mutationInput },
+      e,
+    );
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Aktion fehlgeschlagen",

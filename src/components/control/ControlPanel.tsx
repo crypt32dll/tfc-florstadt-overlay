@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import {
   checkControlAuth,
   getRoomState,
@@ -8,13 +14,20 @@ import {
   verifyRoomPin,
 } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { useRoomState } from "@/lib/hooks/useRoomState";
+import { useSyncedState } from "@/lib/hooks/useSyncedState";
+import { clientLog } from "@/lib/logger.client";
 import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
 import { GAME_LINEUP } from "@/lib/match/rules";
-import { useRoomState } from "@/lib/hooks/useRoomState";
-import { clientLog } from "@/lib/logger.client";
 import type { ActiveView, MatchState } from "@/lib/match/types";
 
 const log = clientLog("control");
+
+function subscribeNow(onStoreChange: () => void, running: boolean) {
+  if (!running) return () => {};
+  const id = window.setInterval(onStoreChange, 250);
+  return () => window.clearInterval(id);
+}
 
 type Props = {
   roomId: string;
@@ -22,29 +35,38 @@ type Props = {
 };
 
 export function ControlPanel({ roomId, initialState }: Props) {
-  const { state, replaceState, refresh, connected, error } =
-    useRoomState(roomId, initialState);
+  const { state, replaceState, refresh, connected, error } = useRoomState(
+    roomId,
+    initialState,
+  );
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [timerMounted, setTimerMounted] = useState(false);
-  const [now, setNow] = useState(0);
-  const [startingDraft, setStartingDraft] = useState(
-    initialState.startingMessage ?? "",
+  const timerRunning = state.timer.running;
+  const now = useSyncExternalStore(
+    (onStoreChange) => subscribeNow(onStoreChange, timerRunning),
+    () => Date.now(),
+    () => 0,
   );
-  const [brbDraft, setBrbDraft] = useState(initialState.brbMessage ?? "");
-  const [endingDraft, setEndingDraft] = useState(
-    initialState.endingMessage ?? "",
+  const [startingDraft, setStartingDraft] = useSyncedState(
+    state.startingMessage ?? "",
   );
-  const [volumeDraft, setVolumeDraft] = useState(
-    Math.round((initialState.sfxVolume ?? 0.7) * 100),
+  const [brbDraft, setBrbDraft] = useSyncedState(state.brbMessage ?? "");
+  const [endingDraft, setEndingDraft] = useSyncedState(
+    state.endingMessage ?? "",
+  );
+  const [volumeDraft, setVolumeDraft] = useSyncedState(
+    Math.round((state.sfxVolume ?? 0.7) * 100),
   );
   const pinSubmitting = useRef(false);
   const stateRef = useRef(state);
-  stateRef.current = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     void checkControlAuth(roomId).then((res) => {
@@ -53,45 +75,13 @@ export function ControlPanel({ roomId, initialState }: Props) {
   }, [roomId]);
 
   useEffect(() => {
-    setStartingDraft(state.startingMessage ?? "");
-  }, [state.startingMessage]);
-
-  useEffect(() => {
-    setBrbDraft(state.brbMessage ?? "");
-  }, [state.brbMessage]);
-
-  useEffect(() => {
-    setEndingDraft(state.endingMessage ?? "");
-  }, [state.endingMessage]);
-
-  useEffect(() => {
-    setVolumeDraft(Math.round((state.sfxVolume ?? 0.7) * 100));
-  }, [state.sfxVolume]);
-
-  useEffect(() => {
-    setTimerMounted(true);
-    setNow(Date.now());
-  }, []);
-
-  useEffect(() => {
-    if (!timerMounted || !state.timer.running) return;
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
-  }, [
-    timerMounted,
-    state.timer.running,
-    state.timer.startedAt,
-    state.timer.elapsedMs,
-  ]);
-
-  useEffect(() => {
     if (!toast) return;
     const id = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(id);
   }, [toast]);
 
   const displayedElapsed =
-    !timerMounted || !state.timer.running
+    !state.timer.running || now === 0
       ? state.timer.elapsedMs
       : getElapsedMs(state, now);
 
@@ -143,7 +133,10 @@ export function ControlPanel({ roomId, initialState }: Props) {
     });
   };
 
-  const confirmRun = (message: string, mutation: Parameters<typeof mutateRoom>[1]) => {
+  const confirmRun = (
+    message: string,
+    mutation: Parameters<typeof mutateRoom>[1],
+  ) => {
     if (typeof window !== "undefined" && !window.confirm(message)) return;
     run(mutation);
   };
@@ -262,12 +255,9 @@ export function ControlPanel({ roomId, initialState }: Props) {
       </div>
 
       {!connected && (
-        <p
-          role="status"
-          className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
-        >
+        <output className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">
           Verbindung unterbrochen – Änderungen ggf. verzögert. WLAN prüfen.
-        </p>
+        </output>
       )}
 
       {(toast || error || authError) && (
@@ -413,54 +403,54 @@ export function ControlPanel({ roomId, initialState }: Props) {
       )}
 
       <div className="glass-panel space-y-3 p-3">
-        <label className="block text-xs tracking-wide text-muted uppercase">
+        <label className="block space-y-1.5 text-xs tracking-wide text-muted uppercase">
           Starting-Soon Text
+          <input
+            value={startingDraft}
+            maxLength={80}
+            onChange={(e) => setStartingDraft(e.target.value)}
+            onBlur={() => {
+              const next = startingDraft.trim() || null;
+              if (next !== (state.startingMessage ?? null)) {
+                run({ type: "setStartingMessage", message: next });
+              }
+            }}
+            className="glass-input py-2 text-sm normal-case tracking-normal text-white"
+            placeholder="Gleich geht’s los"
+          />
         </label>
-        <input
-          value={startingDraft}
-          maxLength={80}
-          onChange={(e) => setStartingDraft(e.target.value)}
-          onBlur={() => {
-            const next = startingDraft.trim() || null;
-            if (next !== (state.startingMessage ?? null)) {
-              run({ type: "setStartingMessage", message: next });
-            }
-          }}
-          className="glass-input py-2 text-sm text-white"
-          placeholder="Gleich geht’s los"
-        />
-        <label className="block text-xs tracking-wide text-muted uppercase">
+        <label className="block space-y-1.5 text-xs tracking-wide text-muted uppercase">
           BRB Text
+          <input
+            value={brbDraft}
+            maxLength={80}
+            onChange={(e) => setBrbDraft(e.target.value)}
+            onBlur={() => {
+              const next = brbDraft.trim() || null;
+              if (next !== (state.brbMessage ?? null)) {
+                run({ type: "setBrbMessage", message: next });
+              }
+            }}
+            className="glass-input py-2 text-sm normal-case tracking-normal text-white"
+            placeholder="Kurze Pause – gleich geht’s weiter."
+          />
         </label>
-        <input
-          value={brbDraft}
-          maxLength={80}
-          onChange={(e) => setBrbDraft(e.target.value)}
-          onBlur={() => {
-            const next = brbDraft.trim() || null;
-            if (next !== (state.brbMessage ?? null)) {
-              run({ type: "setBrbMessage", message: next });
-            }
-          }}
-          className="glass-input py-2 text-sm text-white"
-          placeholder="Kurze Pause – gleich geht’s weiter."
-        />
-        <label className="block text-xs tracking-wide text-muted uppercase">
+        <label className="block space-y-1.5 text-xs tracking-wide text-muted uppercase">
           Ending Text
+          <input
+            value={endingDraft}
+            maxLength={80}
+            onChange={(e) => setEndingDraft(e.target.value)}
+            onBlur={() => {
+              const next = endingDraft.trim() || null;
+              if (next !== (state.endingMessage ?? null)) {
+                run({ type: "setEndingMessage", message: next });
+              }
+            }}
+            className="glass-input py-2 text-sm normal-case tracking-normal text-white"
+            placeholder="Follow für die nächsten Matches…"
+          />
         </label>
-        <input
-          value={endingDraft}
-          maxLength={80}
-          onChange={(e) => setEndingDraft(e.target.value)}
-          onBlur={() => {
-            const next = endingDraft.trim() || null;
-            if (next !== (state.endingMessage ?? null)) {
-              run({ type: "setEndingMessage", message: next });
-            }
-          }}
-          className="glass-input py-2 text-sm text-white"
-          placeholder="Follow für die nächsten Matches…"
-        />
       </div>
 
       <div className="glass-panel space-y-2 p-3">
@@ -498,10 +488,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
             className="w-full accent-[var(--brand-accent)]"
           />
         </label>
-        <SmallBtn
-          disabled={pending}
-          onClick={() => run({ type: "sfxTest" })}
-        >
+        <SmallBtn disabled={pending} onClick={() => run({ type: "sfxTest" })}>
           Sound testen (Overlay/OBS)
         </SmallBtn>
         <p className="text-[0.7rem] text-muted">
@@ -510,10 +497,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <SmallBtn
-          disabled={pending}
-          onClick={() => run({ type: "finishSet" })}
-        >
+        <SmallBtn disabled={pending} onClick={() => run({ type: "finishSet" })}>
           Satz beenden
         </SmallBtn>
         <button
@@ -534,10 +518,9 @@ export function ControlPanel({ roomId, initialState }: Props) {
       <SmallBtn
         disabled={pending}
         onClick={() =>
-          confirmRun(
-            "Komplettes Match zurücksetzen (Tore, Sätze, History)?",
-            { type: "resetMatch" },
-          )
+          confirmRun("Komplettes Match zurücksetzen (Tore, Sätze, History)?", {
+            type: "resetMatch",
+          })
         }
       >
         Match reset
@@ -652,12 +635,17 @@ function TeamNameEditor({
   align: "left" | "right";
 }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(name);
-  useEffect(() => setValue(name), [name]);
+  const [value, setValue] = useSyncedState(name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   if (editing) {
     return (
       <input
+        ref={inputRef}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => {
@@ -670,7 +658,6 @@ function TeamNameEditor({
         className={`w-full rounded border border-white/30 bg-black/30 px-1 py-0.5 text-sm outline-none focus:border-[var(--brand-accent)] ${
           align === "right" ? "text-right" : "text-left"
         }`}
-        autoFocus
       />
     );
   }

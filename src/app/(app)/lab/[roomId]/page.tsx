@@ -11,10 +11,5 @@ export default async function LabPage({
   const res = await getRoomState(roomId);
   if (!res.ok) notFound();
 
-  return (
-    <LabPageClient
-      roomId={roomId}
-      initialState={res.data.state}
-    />
-  );
+  return <LabPageClient roomId={roomId} initialState={res.data.state} />;
 }

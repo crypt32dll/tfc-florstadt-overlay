@@ -32,7 +32,10 @@ export function StartingSoonScreen({ state }: { state: MatchState }) {
         className="relative flex max-h-full w-full max-w-4xl flex-col items-center"
         initial={reduceMotion ? false : { y: 12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: reduceMotion ? 0 : 0.45, delay: reduceMotion ? 0 : 0.05 }}
+        transition={{
+          duration: reduceMotion ? 0 : 0.45,
+          delay: reduceMotion ? 0 : 0.05,
+        }}
       >
         <BrandMark
           size={96}

@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { OverlayShell } from "@/components/overlay/OverlayShell";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { OverlayShell } from "@/components/overlay/OverlayShell";
 import type { MatchState } from "@/lib/match/types";
 
 type Props = {
@@ -12,22 +18,18 @@ type Props = {
   pinHint?: string | null;
 };
 
-export function LabClient({
-  roomId,
-  initialState,
-  pinHint,
-}: Props) {
+export function LabClient({ roomId, initialState, pinHint }: Props) {
   const [meta, setMeta] = useState(initialState);
   const [connected, setConnected] = useState(true);
   const [backdrop, setBackdrop] = useState<"checker" | "stream">("stream");
   const [qr, setQr] = useState<string>("");
-  const [origin, setOrigin] = useState("");
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "",
+  );
   const [copied, setCopied] = useState(false);
   const [showPin, setShowPin] = useState(false);
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
 
   const onConnectionChange = useCallback((ok: boolean) => {
     setConnected(ok);
@@ -97,7 +99,10 @@ export function LabClient({
 
       <aside className="glass-panel m-0 flex w-full flex-col gap-4 rounded-none border-x-0 border-b-0 p-5 lg:m-4 lg:w-80 lg:rounded-[var(--radius-panel)] lg:border">
         <div className="flex justify-center py-1">
-          <BrandMark size={96} className="drop-shadow-[0_0_16px_rgba(6,147,227,0.35)]" />
+          <BrandMark
+            size={96}
+            className="drop-shadow-[0_0_16px_rgba(6,147,227,0.35)]"
+          />
         </div>
         <div className="text-center">
           <h1 className="font-display text-3xl tracking-wide uppercase">
@@ -148,7 +153,9 @@ export function LabClient({
                 </dd>
               </div>
               {showPin ? (
-                <p className="font-mono tracking-widest text-white">{pinHint}</p>
+                <p className="font-mono tracking-widest text-white">
+                  {pinHint}
+                </p>
               ) : (
                 <p className="text-xs text-amber-200/90">
                   Nicht auf Stream/Kamera zeigen.
@@ -159,12 +166,9 @@ export function LabClient({
         </dl>
 
         {!connected && (
-          <p
-            role="status"
-            className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
-          >
+          <output className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
             Verbindung unterbrochen – Overlay zeigt „Sync …“.
-          </p>
+          </output>
         )}
 
         <div className="flex gap-2">
@@ -190,7 +194,7 @@ export function LabClient({
 
         {qr && (
           <div className="rounded-[var(--radius-control)] border border-white/15 bg-white p-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* QR is a data URL from qrcode – next/image not applicable */}
             <img src={qr} alt="QR Control" className="mx-auto" />
             <p className="mt-2 text-center text-xs text-black/70">
               Control auf dem Handy

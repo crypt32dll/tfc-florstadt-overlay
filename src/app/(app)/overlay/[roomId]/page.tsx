@@ -15,7 +15,11 @@ export default async function OverlayPage({
   return (
     <>
       <OverlayBodyClass />
-      <OverlayShell roomId={roomId} initialState={res.data.state} mode="overlay" />
+      <OverlayShell
+        roomId={roomId}
+        initialState={res.data.state}
+        mode="overlay"
+      />
     </>
   );
 }

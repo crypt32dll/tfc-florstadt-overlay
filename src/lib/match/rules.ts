@@ -30,10 +30,7 @@ export function isSetComplete(a: number, b: number): boolean {
   return hi - lo >= 2;
 }
 
-export function winnerSide(
-  a: number,
-  b: number,
-): "a" | "b" | null {
+export function winnerSide(a: number, b: number): "a" | "b" | null {
   if (a === b) return null;
   return a > b ? "a" : "b";
 }

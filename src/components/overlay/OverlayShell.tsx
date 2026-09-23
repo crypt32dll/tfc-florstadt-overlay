@@ -1,26 +1,25 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef } from "react";
 import { completeTransition } from "@/app/actions/rooms";
 import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
+import { clientLog } from "@/lib/logger.client";
 import { applyMutation, normalizeState } from "@/lib/match/defaults";
 import type { MatchState } from "@/lib/match/types";
-import { clientLog } from "@/lib/logger.client";
 import { preloadKickerTexture } from "@/lib/three/createLogoKicker";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
-import { StartingSoonScreen } from "./StartingSoonScreen";
 import { StandingsScreen } from "./StandingsScreen";
+import { StartingSoonScreen } from "./StartingSoonScreen";
 
 const log = clientLog("overlay-shell");
 
 const KickerTransition = dynamic(
-  () =>
-    import("./KickerTransition").then((m) => m.KickerTransition),
+  () => import("./KickerTransition").then((m) => m.KickerTransition),
   { ssr: false },
 );
 
@@ -45,14 +44,14 @@ export function OverlayShell({
   onConnectionChange,
   onStateChange,
 }: Props) {
-  const { state, setState, replaceState, connected } = useRoomState(
-    roomId,
-    initialState,
-  );
+  const { state, replaceState, connected } = useRoomState(roomId, initialState);
   useOverlaySfx(state);
   const completingRef = useRef(false);
   const stateRef = useRef(state);
-  stateRef.current = state;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     void preloadKickerTexture();
@@ -82,7 +81,10 @@ export function OverlayShell({
         await sleep(250 * (attempt + 1));
       }
 
-      log.error("completeTransition giving up – applying local fallback", lastError);
+      log.error(
+        "completeTransition giving up – applying local fallback",
+        lastError,
+      );
       replaceState(
         normalizeState(
           applyMutation(stateRef.current, { type: "transitionComplete" }),
@@ -139,14 +141,11 @@ export function OverlayShell({
 
       {!connected && (
         <div
-          role="status"
           className={`pointer-events-none absolute z-50 rounded-md border border-amber-400/40 bg-black/70 px-2.5 py-1 text-[0.65rem] tracking-wide text-amber-100 uppercase ${
-            mode === "lab"
-              ? "bottom-3 left-3"
-              : "bottom-4 left-4 opacity-70"
+            mode === "lab" ? "bottom-3 left-3" : "bottom-4 left-4 opacity-70"
           }`}
         >
-          Sync …
+          <output>Sync …</output>
         </div>
       )}
     </div>

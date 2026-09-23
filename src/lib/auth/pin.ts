@@ -12,7 +12,7 @@ export function generatePin(length = 4): string {
   const digits = "0123456789";
   let out = "";
   for (let i = 0; i < length; i += 1) {
-    out += digits[Math.floor(Math.random() * digits.length)]!;
+    out += digits.charAt(Math.floor(Math.random() * digits.length));
   }
   return out;
 }

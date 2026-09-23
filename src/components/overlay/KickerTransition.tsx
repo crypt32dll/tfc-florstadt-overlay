@@ -25,7 +25,10 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const doneRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,7 +42,7 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
     let raf = 0;
     let renderer: THREE.WebGLRenderer | undefined;
     let logo: THREE.Group | undefined;
-    let disposables: THREE.Object3D[] = [];
+    const disposables: THREE.Object3D[] = [];
     let removeResize: (() => void) | undefined;
 
     const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));

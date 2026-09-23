@@ -8,7 +8,7 @@ Twitch/OBS Scoreboard for [Tischfußball Club Florstadt](https://www.tfc-florsta
 
 ## Stack
 
-- Next.js 16 + TypeScript + Tailwind
+- Next.js 16 + TypeScript + Tailwind + Biome
 - Free tier: Vercel Hobby + optional Supabase Free
 - Without Supabase env vars → in-memory store (local laptop testing)
 

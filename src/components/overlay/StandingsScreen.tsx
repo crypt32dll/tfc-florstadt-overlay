@@ -15,7 +15,10 @@ export function StandingsScreen({ state: raw }: { state: MatchState }) {
       initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
-      transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
+      transition={{
+        duration: reduceMotion ? 0 : 0.28,
+        ease: [0.22, 1, 0.36, 1],
+      }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
         <div className="flex items-center justify-between gap-4 border-b border-white/12 px-5 py-4">

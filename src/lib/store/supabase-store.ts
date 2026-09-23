@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { MatchState, RoomRecord } from "@/lib/match/types";
 import { actionLog } from "@/lib/logger.server";
+import type { MatchState, RoomRecord } from "@/lib/match/types";
 import type { RoomStore } from "./index";
 
 const log = actionLog("supabase-store");

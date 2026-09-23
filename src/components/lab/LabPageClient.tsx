@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { LabClient } from "@/components/lab/LabClient";
 import type { MatchState } from "@/lib/match/types";
 
@@ -10,11 +10,11 @@ type Props = {
 };
 
 export function LabPageClient(props: Props) {
-  const [pinHint, setPinHint] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPinHint(sessionStorage.getItem(`tfc-pin-${props.roomId}`));
-  }, [props.roomId]);
+  const pinHint = useSyncExternalStore(
+    () => () => {},
+    () => sessionStorage.getItem(`tfc-pin-${props.roomId}`),
+    () => null,
+  );
 
   return <LabClient {...props} pinHint={pinHint} />;
 }

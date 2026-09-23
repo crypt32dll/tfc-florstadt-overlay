@@ -1,5 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
 import { timingSafeEqual } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import type { NextRequest } from "next/server";
 import { actionLog } from "@/lib/logger.server";
 

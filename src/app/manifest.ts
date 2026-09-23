@@ -4,8 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "TFC Florstadt Control",
     short_name: "TFC Control",
-    description:
-      "Match-Control für Tischfußball Club Florstadt Stream Overlay",
+    description: "Match-Control für Tischfußball Club Florstadt Stream Overlay",
     start_url: "/",
     display: "standalone",
     background_color: "#05080f",

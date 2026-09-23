@@ -1,10 +1,5 @@
+import { GAME_LINEUP, isSetComplete, setsToWin, winnerSide } from "./rules";
 import type { MatchState, RoomMutation, TeamSide } from "./types";
-import {
-  GAME_LINEUP,
-  setsToWin,
-  isSetComplete,
-  winnerSide,
-} from "./rules";
 
 export function createInitialState(
   teamA = "TFC Florstadt",
@@ -46,11 +41,9 @@ export function normalizeState(raw: MatchState): MatchState {
     matchFormat: raw.matchFormat === "bestOf5" ? "bestOf5" : "bestOf3",
     lineupIndex,
     gameType: raw.gameType ?? GAME_LINEUP[lineupIndex],
-    brbMessage:
-      raw.brbMessage ?? "Kurze Pause – gleich geht’s weiter.",
+    brbMessage: raw.brbMessage ?? "Kurze Pause – gleich geht’s weiter.",
     endingMessage:
-      raw.endingMessage ??
-      "Follow für die nächsten Matches aus der Wetterau.",
+      raw.endingMessage ?? "Follow für die nächsten Matches aus der Wetterau.",
     sfxEnabled: raw.sfxEnabled ?? true,
     sfxVolume:
       typeof raw.sfxVolume === "number"
@@ -190,7 +183,10 @@ export function applyMutation(
   switch (mutation.type) {
     case "goal": {
       const key = mutation.side === "a" ? "teamA" : "teamB";
-      const nextScore = Math.max(0, Math.min(7, state[key].score + mutation.delta));
+      const nextScore = Math.max(
+        0,
+        Math.min(7, state[key].score + mutation.delta),
+      );
       if (nextScore === state[key].score) return state;
 
       let next: MatchState = {
@@ -264,7 +260,8 @@ export function applyMutation(
         sessionWins: { a: 0, b: 0 },
         history: [],
         timer: { running: false, startedAt: null, elapsedMs: 0 },
-        activeView: state.activeView === "transition" ? "live" : state.activeView,
+        activeView:
+          state.activeView === "transition" ? "live" : state.activeView,
         transitionTo: null,
       });
     }
@@ -368,4 +365,4 @@ export function applyMutation(
   }
 }
 
-export { GAME_LINEUP, setsToWin, isSetComplete } from "./rules";
+export { GAME_LINEUP, isSetComplete, setsToWin } from "./rules";

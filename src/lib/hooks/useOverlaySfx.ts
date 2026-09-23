@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
+import { useEffect, useRef } from "react";
 import type { MatchState } from "@/lib/match/types";
 
 export type SfxKind = "goal" | "switch" | "set";
@@ -50,7 +50,12 @@ export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
     return;
   }
   if (kind === "set") {
-    playTone(ctx, { freq: 340, duration: 0.15, type: "square", volume: v * 0.7 });
+    playTone(ctx, {
+      freq: 340,
+      duration: 0.15,
+      type: "square",
+      volume: v * 0.7,
+    });
     playTone(ctx, {
       freq: 510,
       duration: 0.2,
@@ -67,7 +72,12 @@ export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
     });
     return;
   }
-  playTone(ctx, { freq: 420, duration: 0.22, type: "sawtooth", volume: v * 0.45 });
+  playTone(ctx, {
+    freq: 420,
+    duration: 0.22,
+    type: "sawtooth",
+    volume: v * 0.45,
+  });
   playTone(ctx, {
     freq: 280,
     duration: 0.28,

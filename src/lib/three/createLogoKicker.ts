@@ -130,7 +130,13 @@ export function disposeObject3D(root: THREE.Object3D, disposeMaps = false) {
         : [obj.material];
       for (const m of materials) {
         // Keep shared cached logo map alive across stings
-        if (disposeMaps && m && "map" in m && m.map && m.map !== cachedTexture) {
+        if (
+          disposeMaps &&
+          m &&
+          "map" in m &&
+          m.map &&
+          m.map !== cachedTexture
+        ) {
           m.map.dispose();
         }
         m?.dispose();

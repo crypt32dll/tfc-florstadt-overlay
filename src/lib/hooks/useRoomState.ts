@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getRoomState } from "@/app/actions/rooms";
-import type { MatchState } from "@/lib/match/types";
 import { clientLog } from "@/lib/logger.client";
+import type { MatchState } from "@/lib/match/types";
 import {
   createBrowserSupabase,
   isSupabaseBrowserEnabled,
@@ -66,9 +66,7 @@ export function useRoomState(roomId: string, initialState: MatchState) {
         if (!cancelled) {
           log.error("poll crashed", e);
           setConnected(false);
-          setError(
-            e instanceof Error ? e.message : "Polling fehlgeschlagen",
-          );
+          setError(e instanceof Error ? e.message : "Polling fehlgeschlagen");
         }
       }
     }
