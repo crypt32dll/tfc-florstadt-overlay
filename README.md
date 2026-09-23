@@ -32,13 +32,17 @@ The phone must reach your laptop. Use the LAN IP, e.g. `http://192.168.x.x:3000`
 3. Set env vars (see `.env.example`) on Vercel / `.env.local`
 4. Set a strong `ROOM_SESSION_SECRET` (≥ 32 characters)
 
-### Wake up before match day
+### Keep Supabase Free awake (Vercel Cron)
 
-Supabase **Free** projects pause after ~7 days of inactivity. Before streaming:
+Supabase **Free** projects pause after ~7 days of inactivity. This repo ships a **daily keep-alive cron** so that does not happen in production:
 
-1. Open the [Supabase Dashboard](https://supabase.com/dashboard)
-2. If the project shows **Paused** → **Restore / Resume**
-3. Wait 1–2 minutes, reload Lab/Control/Overlay
+1. Deploy to Vercel (Hobby is fine – cron runs once per day)
+2. Set `CRON_SECRET` in the Vercel project env (≥ 16 random chars)
+3. After deploy, check **Project → Settings → Cron Jobs** – path `/api/cron/keep-alive`, schedule `0 8 * * *` (08:00 UTC)
+
+The job does a lightweight `rooms` head query with the service role.
+
+If the project is already **Paused** (e.g. before the cron was live): open the [Supabase Dashboard](https://supabase.com/dashboard) → **Restore / Resume**, wait 1–2 minutes, then reload Lab/Control/Overlay.
 
 ## OBS Studio
 
@@ -67,6 +71,7 @@ body { background-color: rgba(0,0,0,0) !important; margin: 0 !important; overflo
 | `/lab/[roomId]` | Preview without Twitch |
 | `/control/[roomId]` | Mobile control (PIN) |
 | `/overlay/[roomId]` | OBS browser source |
+| `/api/cron/keep-alive` | Daily Supabase ping (Vercel Cron) |
 
 ## Scripts
 
