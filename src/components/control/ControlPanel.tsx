@@ -175,13 +175,9 @@ export function ControlPanel({ roomId, initialState }: Props) {
       )}
 
       {toast && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
-        >
+        <output className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">
           {toast}
-        </p>
+        </output>
       )}
 
       {(error || authError) && (

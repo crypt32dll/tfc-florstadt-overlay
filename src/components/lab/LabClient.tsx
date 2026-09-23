@@ -197,7 +197,10 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
                   </button>
                 </dd>
               </div>
-              <p id="lab-pin-hint" className="text-right text-[0.7rem] text-amber-200/90">
+              <p
+                id="lab-pin-hint"
+                className="text-right text-[0.7rem] text-amber-200/90"
+              >
                 Nicht auf Stream/Kamera zeigen.
               </p>
             </div>

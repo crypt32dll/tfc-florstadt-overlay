@@ -22,8 +22,12 @@ describe("ActionResult", () => {
   });
 
   it("actionErrorMessage maps protocol codes", () => {
-    expect(actionErrorMessage(actionFail("CONFLICT"))).toContain("aktualisiert");
+    expect(actionErrorMessage(actionFail("CONFLICT"))).toContain(
+      "aktualisiert",
+    );
     expect(actionErrorMessage(actionFail("UNAUTHORIZED"))).toContain("PIN");
-    expect(actionErrorMessage(actionFail("NOT_FOUND"))).toContain("nicht gefunden");
+    expect(actionErrorMessage(actionFail("NOT_FOUND"))).toContain(
+      "nicht gefunden",
+    );
   });
 });

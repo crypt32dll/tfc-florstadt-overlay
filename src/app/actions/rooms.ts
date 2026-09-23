@@ -3,11 +3,7 @@
 import { customAlphabet } from "nanoid";
 import { headers } from "next/headers";
 import { ZodError } from "zod";
-import {
-  actionFail,
-  actionOk,
-  type ActionResult,
-} from "@/lib/action/result";
+import { type ActionResult, actionFail, actionOk } from "@/lib/action/result";
 import { generatePin, hashPin, verifyPin } from "@/lib/auth/pin";
 import { checkPinRateLimit } from "@/lib/auth/rate-limit";
 import {

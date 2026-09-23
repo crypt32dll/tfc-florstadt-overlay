@@ -14,7 +14,11 @@ describe("memoryStore.saveIfRevision", () => {
     await memoryStore.create(room);
     const next = {
       ...room,
-      state: { ...state, revision: state.revision + 1, teamA: { ...state.teamA, score: 1 } },
+      state: {
+        ...state,
+        revision: state.revision + 1,
+        teamA: { ...state.teamA, score: 1 },
+      },
       updatedAt: Date.now(),
     };
     expect(await memoryStore.saveIfRevision(next, state.revision)).toBe("ok");
