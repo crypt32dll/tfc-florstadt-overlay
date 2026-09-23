@@ -194,16 +194,33 @@ export function ControlPanel({ roomId, initialState }: Props) {
       </div>
 
       <div className="glass-panel-strong px-4 py-4">
+        <div className="mb-2 flex items-center justify-between gap-2 text-xs tracking-wide text-muted uppercase">
+          <span>
+            Spiel {(state.lineupIndex ?? 0) + 1}/10 ·{" "}
+            {(state.gameType ?? "doppel") === "doppel" ? "Doppel" : "Einzel"}
+          </span>
+          <span className="text-[var(--brand-accent)]">
+            Sätze {state.sets?.a ?? 0}:{state.sets?.b ?? 0}
+          </span>
+          <span>
+            Gesamt {state.sessionWins.a}:{state.sessionWins.b}
+          </span>
+        </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <TeamNameEditor
             name={state.teamA.name}
             onSave={(name) => run({ type: "setName", side: "a", name })}
             align="right"
           />
-          <div className="font-display text-5xl tabular-nums text-white">
-            {state.teamA.score}
-            <span className="text-[var(--brand-accent)]">:</span>
-            {state.teamB.score}
+          <div className="text-center">
+            <div className="font-display text-5xl tabular-nums text-white">
+              {state.teamA.score}
+              <span className="text-[var(--brand-accent)]">:</span>
+              {state.teamB.score}
+            </div>
+            <div className="text-[0.65rem] tracking-[0.18em] text-muted uppercase">
+              Tore
+            </div>
           </div>
           <TeamNameEditor
             name={state.teamB.name}
@@ -214,6 +231,31 @@ export function ControlPanel({ roomId, initialState }: Props) {
         <div className="mt-1 text-center font-display text-2xl text-[var(--brand-accent)] tabular-nums">
           {formatTimer(displayedElapsed)}
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run({ type: "setMatchFormat", format: "bestOf3" })}
+          className={`btn text-base ${
+            (state.matchFormat ?? "bestOf3") === "bestOf3"
+              ? "btn-primary"
+              : "btn-ghost"
+          }`}
+        >
+          Best of 3
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run({ type: "setMatchFormat", format: "bestOf5" })}
+          className={`btn text-base ${
+            state.matchFormat === "bestOf5" ? "btn-primary" : "btn-ghost"
+          }`}
+        >
+          Best of 5
+        </button>
       </div>
 
       {(error || authError) && (
@@ -299,6 +341,9 @@ export function ControlPanel({ roomId, initialState }: Props) {
           Spiel beenden
         </button>
       </div>
+      <p className="text-center text-xs text-muted">
+        Satz: bis 5 Tore, 2 Abstand, max. 7:6 · Lineup 2D–2E–2D–2E–2D
+      </p>
     </div>
   );
 }

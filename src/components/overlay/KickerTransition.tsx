@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import {
-  createBall,
-  createLogoKicker,
+  createLogoPlate,
   disposeObject3D,
+  loadKickerTexture,
 } from "@/lib/three/createLogoKicker";
 
 type Props = {
@@ -13,7 +13,12 @@ type Props = {
   durationMs?: number;
 };
 
-export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
+/**
+ * Broadcast logo sting — CL-style impact.
+ * Motion tokens (ui-ux-pro-max): ease-out entry, back.out settle,
+ * ease-in exit faster than enter, prefers-reduced-motion fade.
+ */
+export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const doneRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -23,123 +28,259 @@ export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: true,
-      premultipliedAlpha: false,
-    });
-    renderer.setClearColor(0x000000, 0);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 100);
-    camera.position.set(0, 0.15, 4.2);
-
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x222222, 1.1);
-    scene.add(hemi);
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
-    key.position.set(2, 3, 4);
-    scene.add(key);
-    const rim = new THREE.DirectionalLight(0x0693e3, 0.35);
-    rim.position.set(-3, 1, -2);
-    scene.add(rim);
-
-    const kicker = createLogoKicker();
-    const figure = kicker.getObjectByName("figure") as THREE.Group;
-    scene.add(kicker);
-
-    const ball = createBall();
-    scene.add(ball);
-
-    const resize = () => {
-      const parent = canvas.parentElement;
-      const w = parent?.clientWidth ?? 1920;
-      const h = parent?.clientHeight ?? 1080;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    const start = performance.now();
+    let cancelled = false;
     let raf = 0;
+    let renderer: THREE.WebGLRenderer | undefined;
+    let logo: THREE.Group | undefined;
+    let disposables: THREE.Object3D[] = [];
+    let removeResize: (() => void) | undefined;
 
-    const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
-    const easeInCubic = (t: number) => t ** 3;
-
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / durationMs);
-
-      // Wind-up (foot back) → snap forward toward camera → spin under rod
-      // +rot.x sends foot to -Z (away); -rot.x kicks toward camera (+Z)
-      let rot = 0;
-      if (t < 0.18) {
-        rot = 0.9 * easeOutCubic(t / 0.18);
-      } else if (t < 0.36) {
-        const u = (t - 0.18) / 0.18;
-        rot = 0.9 - 2.3 * easeInCubic(u);
-      } else if (t < 0.55) {
-        const u = (t - 0.36) / 0.19;
-        rot = -1.4 - 0.12 * Math.sin(u * Math.PI);
-      } else {
-        const u = easeInCubic((t - 0.55) / 0.45);
-        rot = -1.45 - u * (Math.PI * 1.1);
-      }
-      figure.rotation.x = rot;
-
-      // Ball rides the foot, then flies toward camera after contact (~0.32)
-      if (t < 0.32) {
-        ball.position.set(
-          0.05,
-          -0.85 + Math.sin(-rot) * 0.12,
-          0.45 + Math.sin(-rot) * 0.08,
-        );
-        ball.visible = true;
-        ball.scale.setScalar(1);
-      } else {
-        const u = Math.min(1, (t - 0.32) / 0.55);
-        ball.position.set(
-          0.15 + u * 0.4,
-          -0.35 + u * 1.6 - u * u * 1.1,
-          0.55 + u * 4.5,
-        );
-        ball.scale.setScalar(1 + u * 5);
-        ball.visible = u < 0.92;
-      }
-
-      // Figure fades as it spins away; canvas clears at the end
-      if (t < 0.58) {
-        figure.visible = true;
-        canvas.style.opacity = "1";
-      } else {
-        const fade = 1 - (t - 0.58) / 0.42;
-        figure.visible = fade > 0.05;
-        canvas.style.opacity = String(Math.max(0, fade));
-      }
-
-      renderer.render(scene, camera);
-
-      if (t < 1) {
-        raf = requestAnimationFrame(tick);
-      } else if (!doneRef.current) {
-        doneRef.current = true;
-        void onCompleteRef.current();
-      }
+    // Easing (GSAP-equivalent curves)
+    const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
+    const easeInExpo = (t: number) => (t <= 0 ? 0 : 2 ** (10 * t - 10));
+    const easeOutBack = (t: number, s = 1.55) => {
+      const c1 = s;
+      const c3 = c1 + 1;
+      return 1 + c3 * (t - 1) ** 3 + c1 * (t - 1) ** 2;
     };
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-    raf = requestAnimationFrame(tick);
+    void (async () => {
+      let texture: THREE.Texture;
+      try {
+        texture = await loadKickerTexture();
+      } catch {
+        if (!cancelled && !doneRef.current) {
+          doneRef.current = true;
+          void onCompleteRef.current();
+        }
+        return;
+      }
+      if (cancelled) {
+        texture.dispose();
+        return;
+      }
+
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        premultipliedAlpha: false,
+      });
+      renderer.setClearColor(0x000000, 0);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
+      camera.position.set(0, 0, 5);
+
+      // Impact flash (wide soft disc)
+      const flash = new THREE.Mesh(
+        new THREE.CircleGeometry(10, 64),
+        new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }),
+      );
+      flash.position.z = -1.5;
+      scene.add(flash);
+      disposables.push(flash);
+
+      // Large brand glow behind everything
+      const glow = new THREE.Mesh(
+        new THREE.CircleGeometry(4.8, 64),
+        new THREE.MeshBasicMaterial({
+          color: 0x0693e3,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }),
+      );
+      glow.position.z = -0.35;
+      scene.add(glow);
+      disposables.push(glow);
+
+      // Expanding rings on impact — scaled for big disc
+      const rings: THREE.Mesh[] = [];
+      for (let i = 0; i < 2; i += 1) {
+        const ring = new THREE.Mesh(
+          new THREE.RingGeometry(1.4, 1.55, 64),
+          new THREE.MeshBasicMaterial({
+            color: 0x0693e3,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            side: THREE.DoubleSide,
+          }),
+        );
+        ring.position.z = -0.08 - i * 0.03;
+        scene.add(ring);
+        rings.push(ring);
+        disposables.push(ring);
+      }
+
+      logo = createLogoPlate(texture);
+      scene.add(logo);
+
+      const resize = () => {
+        if (!renderer) return;
+        const parent = canvas.parentElement;
+        const w = parent?.clientWidth ?? 1920;
+        const h = parent?.clientHeight ?? 1080;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+      };
+      resize();
+      window.addEventListener("resize", resize);
+      removeResize = () => window.removeEventListener("resize", resize);
+
+      // Reduced motion: short centered fade
+      const effectiveDuration = reduceMotion ? Math.min(durationMs, 700) : durationMs;
+      const start = performance.now();
+
+      const setLogoOpacity = (opacity: number) => {
+        logo?.traverse((obj) => {
+          if (obj instanceof THREE.Mesh && obj.material) {
+            const m = obj.material as THREE.MeshBasicMaterial;
+            if ("opacity" in m) m.opacity = opacity;
+          }
+        });
+      };
+
+      const tick = (now: number) => {
+        if (cancelled || !renderer || !logo) return;
+        const t = clamp01((now - start) / effectiveDuration);
+
+        if (reduceMotion) {
+          const fadeIn = clamp01(t / 0.35);
+          const fadeOut = t > 0.65 ? clamp01((t - 0.65) / 0.35) : 0;
+          const opacity = fadeIn * (1 - fadeOut);
+          logo.position.set(0, 0, 0);
+          logo.scale.setScalar(0.95 + fadeIn * 0.1);
+          logo.rotation.set(0, 0, 0);
+          setLogoOpacity(opacity);
+          (glow.material as THREE.MeshBasicMaterial).opacity = opacity * 0.2;
+          canvas.style.opacity = "1";
+          renderer.render(scene, camera);
+        } else {
+          // Timeline: enter 0–0.38 · impact/hold 0.38–0.58 · exit 0.58–1 (exit faster)
+          let x = 0;
+          let y = 0;
+          let z = 0;
+          let scale = 1;
+          let rotZ = 0;
+          let rotY = 0;
+          let opacity = 1;
+          let glowOp = 0;
+          let flashOp = 0;
+          let fov = 38;
+
+          if (t < 0.38) {
+            const u = easeOutExpo(t / 0.38);
+            const overshoot = easeOutBack(u, 1.45);
+            z = THREE.MathUtils.lerp(9.5, 0, u);
+            scale = THREE.MathUtils.lerp(0.08, 1.08, overshoot);
+            rotZ = (1 - u) * Math.PI * 1.6;
+            rotY = (1 - u) * 0.55;
+            x = Math.sin((1 - u) * Math.PI) * 0.35;
+            opacity = clamp01(u * 1.5);
+            glowOp = u * 0.45;
+            fov = THREE.MathUtils.lerp(48, 36, u);
+          } else if (t < 0.58) {
+            const u = (t - 0.38) / 0.2;
+            // Impact punch then settle
+            const punch = Math.sin(clamp01(u / 0.35) * Math.PI);
+            z = 0;
+            scale = 1.08 - 0.06 * punch + 0.02 * Math.sin(u * Math.PI * 2);
+            rotZ = Math.sin(u * Math.PI * 2) * 0.03;
+            rotY = 0;
+            opacity = 1;
+            glowOp = 0.55 + 0.12 * Math.sin(u * Math.PI);
+            flashOp = u < 0.4 ? (1 - u / 0.4) * 0.55 : 0;
+            fov = 36 + punch * 2.5;
+
+            // Rings expand from impact
+            rings.forEach((ring, i) => {
+              const delay = i * 0.12;
+              const ru = clamp01((u - delay) / (1 - delay));
+              const mat = ring.material as THREE.MeshBasicMaterial;
+              mat.opacity = (1 - ru) * 0.55;
+              ring.scale.setScalar(1 + ru * (3.4 + i * 1.1));
+              ring.rotation.z = ru * 0.4 * (i % 2 === 0 ? 1 : -1);
+            });
+          } else {
+            const u = easeInExpo((t - 0.58) / 0.42);
+            z = THREE.MathUtils.lerp(0, -11, u);
+            scale = THREE.MathUtils.lerp(1.02, 2.4, u);
+            rotZ = -u * 0.5;
+            rotY = -u * 0.35;
+            y = u * 0.25;
+            opacity = 1 - u;
+            glowOp = 0.5 * (1 - u);
+            flashOp = 0;
+            fov = THREE.MathUtils.lerp(36, 44, u);
+            rings.forEach((ring) => {
+              (ring.material as THREE.MeshBasicMaterial).opacity = 0;
+            });
+          }
+
+          logo.position.set(x, y, z);
+          logo.scale.setScalar(scale);
+          logo.rotation.set(0, rotY, rotZ);
+          setLogoOpacity(opacity);
+
+          const glowMat = glow.material as THREE.MeshBasicMaterial;
+          glowMat.opacity = glowOp;
+          glow.scale.setScalar(scale * (1.05 + glowOp * 0.4));
+          glow.position.copy(logo.position);
+          glow.position.z -= 0.2;
+
+          (flash.material as THREE.MeshBasicMaterial).opacity = flashOp;
+
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+
+          // Deterministic impact punch (no random jitter)
+          if (t >= 0.38 && t < 0.5) {
+            const s = 1 - (t - 0.38) / 0.12;
+            camera.position.x = Math.sin(t * 90) * 0.035 * s;
+            camera.position.y = Math.cos(t * 70) * 0.025 * s;
+          } else {
+            camera.position.x = 0;
+            camera.position.y = 0;
+          }
+
+          canvas.style.opacity = "1";
+          renderer.render(scene, camera);
+        }
+
+        if (t < 1) {
+          raf = requestAnimationFrame(tick);
+        } else if (!doneRef.current) {
+          doneRef.current = true;
+          void onCompleteRef.current();
+        }
+      };
+
+      raf = requestAnimationFrame(tick);
+    })();
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
-      window.removeEventListener("resize", resize);
-      disposeObject3D(kicker);
-      disposeObject3D(ball);
-      renderer.dispose();
+      removeResize?.();
+      if (logo) disposeObject3D(logo);
+      for (const obj of disposables) disposeObject3D(obj);
+      renderer?.dispose();
     };
-    // Run once per mount; onComplete is read via ref
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [durationMs]);
 
   return (

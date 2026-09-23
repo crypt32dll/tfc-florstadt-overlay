@@ -9,7 +9,7 @@ import {
 } from "@/lib/auth/session";
 import { generatePin, hashPin, verifyPin } from "@/lib/auth/pin";
 import { checkPinRateLimit } from "@/lib/auth/rate-limit";
-import { applyMutation, createInitialState } from "@/lib/match/defaults";
+import { applyMutation, createInitialState, normalizeState } from "@/lib/match/defaults";
 import {
   createRoomSchema,
   mutationSchema,
@@ -74,7 +74,10 @@ export async function getRoomState(
     const store = await getStore();
     const room = await store.get(roomIdParam);
     if (!room) return { ok: false, error: "Raum nicht gefunden" };
-    return { ok: true, data: { state: room.state, storeMode: store.mode } };
+    return {
+      ok: true,
+      data: { state: normalizeState(room.state), storeMode: store.mode },
+    };
   } catch (e) {
     return {
       ok: false,
@@ -142,7 +145,7 @@ async function applyAndSave(
   const room = await store.get(roomIdParam);
   if (!room) return { ok: false, error: "Raum nicht gefunden" };
 
-  const nextState = applyMutation(room.state, mutation);
+  const nextState = normalizeState(applyMutation(room.state, mutation));
   await store.save({
     ...room,
     state: nextState,

@@ -49,6 +49,7 @@ export const mutationSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("resetMatch") }),
   z.object({ type: z.literal("finishMatch") }),
+  z.object({ type: z.literal("finishSet") }),
   z.object({
     type: z.literal("setView"),
     view: z.enum(["startingSoon", "live", "standings"]),
@@ -59,6 +60,10 @@ export const mutationSchema = z.discriminatedUnion("type", [
     message: z.string().trim().max(80).nullable(),
   }),
   z.object({ type: z.literal("swapSides") }),
+  z.object({
+    type: z.literal("setMatchFormat"),
+    format: z.enum(["bestOf3", "bestOf5"]),
+  }),
   z.object({
     type: z.literal("setTargetScore"),
     targetScore: z.number().int().min(1).max(99).nullable(),

@@ -2,10 +2,11 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { formatTimer } from "@/lib/match/defaults";
+import { formatTimer, normalizeState } from "@/lib/match/defaults";
 import type { MatchState } from "@/lib/match/types";
 
-export function StandingsScreen({ state }: { state: MatchState }) {
+export function StandingsScreen({ state: raw }: { state: MatchState }) {
+  const state = normalizeState(raw);
   const reduceMotion = useReducedMotion();
 
   return (
@@ -23,7 +24,7 @@ export function StandingsScreen({ state }: { state: MatchState }) {
             <BrandMark size={48} />
             <div>
               <div className="text-[0.65rem] tracking-[0.2em] text-[var(--brand-accent)] uppercase">
-                Session
+                Sätze gesamt
               </div>
               <h2 className="overlay-score text-3xl leading-none md:text-4xl">
                 Zwischenstand
@@ -32,7 +33,7 @@ export function StandingsScreen({ state }: { state: MatchState }) {
           </div>
           <div className="rounded-[var(--radius-control)] border border-[var(--brand-accent)]/40 bg-[var(--brand-accent)]/15 px-4 py-2 text-center">
             <div className="text-[0.6rem] tracking-[0.18em] text-white/60 uppercase">
-              Wins
+              Gesamt
             </div>
             <div className="overlay-score text-3xl text-[var(--brand-accent)] md:text-4xl">
               {state.sessionWins.a}:{state.sessionWins.b}
@@ -47,11 +48,15 @@ export function StandingsScreen({ state }: { state: MatchState }) {
             </p>
           ) : (
             <ul className="space-y-1">
-              {state.history.slice(0, 8).map((game, i) => (
+              {state.history.slice(0, 10).map((game, i) => (
                 <li
                   key={`${game.finishedAt}-${i}`}
-                  className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 rounded-lg px-2 py-2.5 odd:bg-white/[0.04]"
+                  className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-3 rounded-lg px-2 py-2.5 odd:bg-white/[0.04]"
                 >
+                  <span className="w-16 text-[0.65rem] tracking-wide text-white/45 uppercase">
+                    {(game.lineupIndex ?? state.history.length - 1 - i) + 1}.{" "}
+                    {game.gameType === "einzel" ? "Einzel" : "Doppel"}
+                  </span>
                   <span className="overlay-score truncate text-right text-2xl">
                     {game.teamA}
                   </span>

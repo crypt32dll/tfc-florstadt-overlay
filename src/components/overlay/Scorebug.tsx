@@ -2,7 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
+import { formatTimer, getElapsedMs, normalizeState } from "@/lib/match/defaults";
+import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
 import { useEffect, useState } from "react";
 
@@ -32,10 +33,14 @@ function useLiveElapsed(state: MatchState) {
   return getElapsedMs(state, now);
 }
 
-export function Scorebug({ state }: { state: MatchState }) {
+export function Scorebug({ state: raw }: { state: MatchState }) {
+  const state = normalizeState(raw);
   const elapsed = useLiveElapsed(state);
-  const pulseKey = `${state.teamA.score}-${state.teamB.score}`;
+  const pulseKey = `${state.teamA.score}-${state.teamB.score}-${state.sets.a}-${state.sets.b}`;
   const reduceMotion = useReducedMotion();
+  const need = setsToWin(state.matchFormat);
+  const gameLabel = state.gameType === "doppel" ? "Doppel" : "Einzel";
+  const spielNr = state.lineupIndex + 1;
 
   return (
     <motion.div
@@ -47,8 +52,23 @@ export function Scorebug({ state }: { state: MatchState }) {
       transition={{ duration: reduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-1.5 text-[0.65rem] tracking-[0.16em] text-white/70 uppercase md:px-5">
+          <span>
+            Spiel {spielNr}/{GAME_LINEUP.length} · {gameLabel}
+          </span>
+          <span className="text-[var(--brand-accent)]">
+            Sätze {state.sets.a}:{state.sets.b}
+            <span className="text-white/40"> (Bo{need * 2 - 1})</span>
+          </span>
+          <span>
+            Gesamt {state.sessionWins.a}:{state.sessionWins.b}
+          </span>
+        </div>
         <div className="flex items-center gap-3 px-4 py-3 md:gap-4 md:px-5">
-          <BrandMark size={48} className="shrink-0 drop-shadow-[0_0_12px_rgba(6,147,227,0.45)]" />
+          <BrandMark
+            size={48}
+            className="shrink-0 drop-shadow-[0_0_12px_rgba(6,147,227,0.45)]"
+          />
           <div className="overlay-divider h-11" />
           <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-4">
             <div className="overlay-score truncate text-right text-2xl text-white md:text-3xl">
@@ -59,13 +79,18 @@ export function Scorebug({ state }: { state: MatchState }) {
               initial={reduceMotion ? false : { scale: 1.12 }}
               animate={{ scale: 1 }}
               transition={{ duration: reduceMotion ? 0 : 0.28 }}
-              className="overlay-score flex items-baseline gap-2 text-5xl leading-none text-white md:text-6xl"
+              className="overlay-score flex flex-col items-center leading-none"
             >
-              <span>{state.teamA.score}</span>
-              <span className="text-3xl text-[var(--brand-accent)] md:text-4xl">
-                :
-              </span>
-              <span>{state.teamB.score}</span>
+              <div className="flex items-baseline gap-2 text-5xl text-white md:text-6xl">
+                <span>{state.teamA.score}</span>
+                <span className="text-3xl text-[var(--brand-accent)] md:text-4xl">
+                  :
+                </span>
+                <span>{state.teamB.score}</span>
+              </div>
+              <div className="mt-1 text-[0.6rem] tracking-[0.2em] text-white/50 uppercase">
+                Tore · Satz
+              </div>
             </motion.div>
             <div className="overlay-score truncate text-2xl text-white md:text-3xl">
               {state.teamB.name}
@@ -81,11 +106,6 @@ export function Scorebug({ state }: { state: MatchState }) {
             </div>
           </div>
         </div>
-        {state.targetScore != null && (
-          <div className="border-t border-white/10 bg-[var(--brand-accent)]/15 px-4 py-1.5 text-center text-xs tracking-[0.2em] text-white uppercase">
-            First to {state.targetScore}
-          </div>
-        )}
         {state.timer.running && (
           <div className="h-0.5 w-full overflow-hidden bg-white/10">
             <div
