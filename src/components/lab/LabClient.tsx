@@ -23,7 +23,7 @@ function EyeIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden
+      aria-hidden="true"
     >
       <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
       <circle cx="12" cy="12" r="3" />
@@ -42,7 +42,7 @@ function EyeOffIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden
+      aria-hidden="true"
     >
       <path d="M3 3l18 18" />
       <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
@@ -132,7 +132,7 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
         </div>
       </div>
 
-      <aside className="glass-panel m-0 flex w-full flex-col gap-4 rounded-none border-x-0 border-b-0 p-5 lg:m-4 lg:w-80 lg:rounded-[var(--radius-panel)] lg:border">
+      <aside className="glass-panel m-0 flex w-full flex-col gap-4 rounded-none border-x-0 border-b-0 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:m-4 lg:w-80 lg:rounded-[var(--radius-panel)] lg:border lg:pb-5">
         <div className="flex justify-center py-1">
           <BrandMark
             size={96}
@@ -174,27 +174,32 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
             </dd>
           </div>
           {pinHint && (
-            <div className="flex items-center justify-between gap-2">
-              <dt className="text-muted">PIN</dt>
-              <dd className="flex items-center justify-end gap-2">
-                <span
-                  className="font-mono tracking-widest text-white tabular-nums"
-                  title={
-                    showPin ? undefined : "Nicht auf Stream/Kamera zeigen."
-                  }
-                >
-                  {showPin ? pinHint : "••••"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowPin((v) => !v)}
-                  className="rounded p-1 text-muted transition-colors hover:bg-white/10 hover:text-white"
-                  aria-label={showPin ? "PIN verbergen" : "PIN anzeigen"}
-                  aria-pressed={showPin}
-                >
-                  {showPin ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </dd>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted">PIN</dt>
+                <dd className="flex items-center justify-end gap-1">
+                  <span
+                    id="lab-pin-value"
+                    className="font-mono tracking-widest text-white tabular-nums"
+                    translate="no"
+                  >
+                    {showPin ? pinHint : "••••"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((v) => !v)}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-control)] text-muted transition-colors hover:bg-white/10 hover:text-white"
+                    aria-label={showPin ? "PIN verbergen" : "PIN anzeigen"}
+                    aria-pressed={showPin}
+                    aria-describedby="lab-pin-hint"
+                  >
+                    {showPin ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </dd>
+              </div>
+              <p id="lab-pin-hint" className="text-right text-[0.7rem] text-amber-200/90">
+                Nicht auf Stream/Kamera zeigen.
+              </p>
             </div>
           )}
         </dl>
@@ -229,7 +234,13 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
         {qr && (
           <div className="rounded-[var(--radius-control)] border border-white/15 bg-white p-3">
             {/* QR is a data URL from qrcode – next/image not applicable */}
-            <img src={qr} alt="QR Control" className="mx-auto" />
+            <img
+              src={qr}
+              alt="QR-Code zur Control-URL"
+              width={220}
+              height={220}
+              className="mx-auto"
+            />
             <p className="mt-2 text-center text-xs text-black/70">
               Control auf dem Handy
             </p>
@@ -257,7 +268,6 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
             <li>
               Audio der Browser Source an – dann im Control „Sound testen“
             </li>
-            <li>Custom CSS für transparenten Body</li>
           </ol>
         </section>
       </aside>

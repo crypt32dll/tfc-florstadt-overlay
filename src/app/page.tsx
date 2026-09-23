@@ -50,18 +50,11 @@ export default function HomePage() {
                 </strong>{" "}
                 abwählen
               </li>
-              <li>Custom CSS (empfohlen) einfügen:</li>
             </ol>
-            <pre className="mt-3 overflow-x-auto rounded-[var(--radius-control)] border border-white/10 bg-black/40 p-3 text-[0.7rem] leading-relaxed text-white/80">
-              {`body {
-  background-color: rgba(0, 0, 0, 0) !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}`}
-            </pre>
             <p className="mt-3 text-xs text-muted">
-              So bleibt der Hintergrund transparent und nur Scoreboard / Screens
-              sind sichtbar.
+              Der Overlay-Hintergrund ist bereits transparent — Custom CSS in
+              OBS brauchst du nicht. Es bleiben nur Scoreboard und Screens
+              sichtbar.
             </p>
           </section>
         </aside>

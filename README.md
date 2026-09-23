@@ -103,15 +103,8 @@ If the Supabase project is already paused, resume it from the [dashboard](https:
 3. Width **1920**, height **1080**.
 4. Turn off “Shutdown source when not visible”.
 5. Turn **audio** on for that source so goal, set, and screen sounds play.
-6. Custom CSS:
 
-```css
-body {
-  background-color: rgba(0, 0, 0, 0) !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-```
+The overlay page already paints a transparent `html`/`body` — no Custom CSS in OBS.
 
 > [!WARNING]
 > Do not put Preview Lab on camera while the PIN is visible. The overlay URL itself does not show the PIN.

@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import Link from "next/link";
+import { useRef, useState, useTransition } from "react";
 import { createRoom } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { actionErrorMessage } from "@/lib/action/result";
@@ -14,7 +14,6 @@ type FieldErrors = {
 };
 
 export function CreateRoomForm() {
-  const router = useRouter();
   const [teamA, setTeamA] = useState("TFC Florstadt");
   const [teamB, setTeamB] = useState("");
   const [pin, setPin] = useState("");
@@ -24,7 +23,11 @@ export function CreateRoomForm() {
     roomId: string;
     pin: string;
   } | null>(null);
+  const [pinCopied, setPinCopied] = useState(false);
   const [pending, startTransition] = useTransition();
+  const teamARef = useRef<HTMLInputElement>(null);
+  const teamBRef = useRef<HTMLInputElement>(null);
+  const pinRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +48,14 @@ export function CreateRoomForm() {
         }
       }
       setFieldErrors(next);
+      const first = next.teamA
+        ? teamARef.current
+        : next.teamB
+          ? teamBRef.current
+          : next.pin
+            ? pinRef.current
+            : null;
+      first?.focus();
       return;
     }
 
@@ -60,6 +71,17 @@ export function CreateRoomForm() {
     });
   };
 
+  const copyPin = async () => {
+    if (!created) return;
+    try {
+      await navigator.clipboard.writeText(created.pin);
+      setPinCopied(true);
+      window.setTimeout(() => setPinCopied(false), 2000);
+    } catch {
+      setPinCopied(false);
+    }
+  };
+
   if (created) {
     return (
       <div className="glass-panel-strong mx-auto w-full max-w-lg space-y-6 p-5 sm:p-6">
@@ -73,31 +95,43 @@ export function CreateRoomForm() {
         <div className="space-y-3 rounded-[var(--radius-control)] border border-white/10 bg-black/35 p-4 font-mono text-lg">
           <div className="flex justify-between gap-3 text-sm sm:text-base">
             <span className="text-muted">Raum</span>
-            <strong className="text-white">{created.roomId}</strong>
+            <strong className="text-white" translate="no">
+              {created.roomId}
+            </strong>
           </div>
           <div className="h-px bg-white/10" />
-          <div className="flex justify-between gap-3 text-sm sm:text-base">
+          <div className="flex items-center justify-between gap-3 text-sm sm:text-base">
             <span className="text-muted">PIN</span>
-            <strong className="tracking-[0.35em] text-[var(--brand-accent)]">
-              {created.pin}
-            </strong>
+            <div className="flex items-center gap-2">
+              <strong
+                className="tracking-[0.35em] text-[var(--brand-accent)]"
+                translate="no"
+              >
+                {created.pin}
+              </strong>
+              <button
+                type="button"
+                onClick={() => void copyPin()}
+                className="btn btn-ghost min-h-11 min-w-11 px-3 text-sm normal-case tracking-normal"
+              >
+                {pinCopied ? "Kopiert" : "Kopieren"}
+              </button>
+            </div>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => router.push(`/lab/${created.roomId}`)}
+          <Link
+            href={`/lab/${created.roomId}`}
             className="btn btn-primary text-xl"
           >
             Preview Lab
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/control/${created.roomId}`)}
+          </Link>
+          <Link
+            href={`/control/${created.roomId}`}
             className="btn btn-ghost text-xl"
           >
             Control
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -129,6 +163,9 @@ export function CreateRoomForm() {
       <label className="block space-y-1.5 text-sm text-muted">
         Team A
         <input
+          ref={teamARef}
+          name="teamA"
+          autoComplete="organization"
           value={teamA}
           onChange={(e) => {
             setTeamA(e.target.value);
@@ -151,6 +188,9 @@ export function CreateRoomForm() {
       <label className="block space-y-1.5 text-sm text-muted">
         Team B
         <input
+          ref={teamBRef}
+          name="teamB"
+          autoComplete="off"
           value={teamB}
           onChange={(e) => {
             setTeamB(e.target.value);
@@ -158,7 +198,7 @@ export function CreateRoomForm() {
               setFieldErrors((prev) => ({ ...prev, teamB: undefined }));
             }
           }}
-          placeholder="Gegner"
+          placeholder="Gegner…"
           aria-invalid={Boolean(fieldErrors.teamB)}
           aria-describedby={fieldErrors.teamB ? "teamB-error" : undefined}
           className={`glass-input text-base text-white ${
@@ -174,6 +214,11 @@ export function CreateRoomForm() {
       <label className="block space-y-1.5 text-sm text-muted">
         PIN (optional, sonst automatisch)
         <input
+          ref={pinRef}
+          name="pin"
+          autoComplete="off"
+          spellCheck={false}
+          inputMode="numeric"
           value={pin}
           onChange={(e) => {
             setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
@@ -181,8 +226,7 @@ export function CreateRoomForm() {
               setFieldErrors((prev) => ({ ...prev, pin: undefined }));
             }
           }}
-          inputMode="numeric"
-          placeholder="4–6 Ziffern"
+          placeholder="4–6 Ziffern…"
           aria-invalid={Boolean(fieldErrors.pin)}
           aria-describedby={fieldErrors.pin ? "pin-error" : undefined}
           className={`glass-input text-base tracking-widest text-white ${

@@ -97,7 +97,7 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
     return () => window.clearTimeout(id);
   }, [toast]);
 
-  const showToast = useCallback((msg: string) => setToast(msg), []);
+  const showInfoToast = useCallback((message: string) => setToast(message), []);
 
   const run = useCallback(
     (mutation: RoomMutation, opts?: { skipRevisionCheck?: boolean }) => {
@@ -116,7 +116,7 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
               setMutationError(actionErrorMessage(res));
               log.warn("session expired", roomId);
             } else if (res.code === "CONFLICT") {
-              showToast(actionErrorMessage(res));
+              showInfoToast(actionErrorMessage(res));
               log.warn("revision conflict", roomId);
               const fresh = await getRoomState(roomId);
               if (fresh.ok) {
@@ -125,9 +125,7 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
                 await refresh();
               }
             } else {
-              const msg = actionErrorMessage(res);
-              setMutationError(msg);
-              showToast(msg);
+              setMutationError(actionErrorMessage(res));
               log.warn("mutation rejected", res.code);
             }
             return;
@@ -141,11 +139,10 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
               ? err.message
               : "Netzwerkfehler – bitte erneut versuchen.";
           setMutationError(msg);
-          showToast(msg);
         }
       });
     },
-    [roomId, showToast],
+    [roomId, showInfoToast],
   );
 
   const confirmRun = useCallback(

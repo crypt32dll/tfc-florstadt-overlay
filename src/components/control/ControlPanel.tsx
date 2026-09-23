@@ -101,9 +101,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
               onSubmit={(e) => {
                 void onPinSubmit(e);
               }}
+              className="space-y-2"
             >
+              <label
+                htmlFor="control-pin"
+                className="block text-center text-xs tracking-[0.18em] text-muted uppercase"
+              >
+                PIN
+              </label>
               <input
+                id="control-pin"
                 name="pin"
+                type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={6}
@@ -112,9 +121,11 @@ export function ControlPanel({ roomId, initialState }: Props) {
                   setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
                   setAuthError(null);
                 }}
-                placeholder="PIN"
+                placeholder="4–6 Ziffern…"
                 enterKeyHint="go"
                 autoComplete="one-time-code"
+                spellCheck={false}
+                autoCorrect="off"
                 className="glass-input py-4 text-center text-2xl tracking-[0.4em] text-white"
               />
             </form>
@@ -132,11 +143,8 @@ export function ControlPanel({ roomId, initialState }: Props) {
               </p>
             )}
             <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                void onPinSubmit();
-              }}
+              type="submit"
+              form="pin-form"
               disabled={pinLoading}
               className="btn btn-primary relative z-50 w-full text-2xl"
             >
@@ -166,12 +174,22 @@ export function ControlPanel({ roomId, initialState }: Props) {
         </output>
       )}
 
-      {(toast || error || authError) && (
+      {toast && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
+        >
+          {toast}
+        </p>
+      )}
+
+      {(error || authError) && (
         <p
           role="alert"
           className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200"
         >
-          {toast ?? error ?? authError}
+          {authError ?? error}
         </p>
       )}
 
@@ -302,7 +320,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
           }
           className="btn btn-primary w-full text-lg"
         >
-          Transition abschließen (Escape)
+          Transition abschließen
         </button>
       )}
 
@@ -514,7 +532,7 @@ function ViewSwitcher({
     ending: "Ende",
   };
   return (
-    <div className="grid grid-cols-5 gap-1.5">
+    <div className="grid grid-cols-5 gap-2">
       {views.map((view) => {
         const isActive = active === view;
         return (
@@ -523,6 +541,7 @@ function ViewSwitcher({
             type="button"
             disabled={pending || active === "transition"}
             onClick={() => onSelect(view)}
+            aria-pressed={isActive}
             className={`btn min-h-12 px-0.5 py-3 text-xs sm:text-sm ${
               isActive ? "btn-primary" : "btn-ghost"
             }`}
@@ -565,7 +584,7 @@ function TeamNameEditor({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className={`w-full rounded border border-white/30 bg-black/30 px-1 py-0.5 text-sm outline-none focus:border-[var(--brand-accent)] ${
+        className={`w-full rounded border border-white/30 bg-black/30 px-1 py-0.5 text-sm outline-none focus-visible:border-[var(--brand-accent)] focus-visible:ring-2 focus-visible:ring-[var(--brand-accent-soft)] ${
           align === "right" ? "text-right" : "text-left"
         }`}
       />

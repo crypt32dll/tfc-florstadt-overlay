@@ -34,6 +34,10 @@
   --font-display: var(--font-teko);
 }
 
+html {
+  color-scheme: dark;
+}
+
 html,
 body {
   margin: 0;
@@ -163,7 +167,7 @@ button:disabled,
   color: rgba(244, 247, 251, 0.4);
 }
 
-.glass-input:focus {
+.glass-input:focus-visible {
   outline: none;
   border-color: var(--brand-accent);
   box-shadow: 0 0 0 3px var(--brand-accent-soft);
@@ -354,4 +358,7 @@ html.overlay-root,
 html.overlay-root body,
 body.overlay-root {
   background: transparent !important;
+  background-color: rgba(0, 0, 0, 0) !important;
+  margin: 0 !important;
+  overflow: hidden !important;
 }
