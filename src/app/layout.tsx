@@ -9,10 +9,29 @@ import "@fontsource/teko/latin-600.css";
 import "@fontsource/teko/latin-700.css";
 import "./globals.css";
 
+const siteDescription =
+  "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.";
+
+function siteUrl(): URL {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL);
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return new URL(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+  }
+  if (process.env.VERCEL_URL) {
+    return new URL(`https://${process.env.VERCEL_URL}`);
+  }
+  return new URL("http://localhost:3000");
+}
+
 export const metadata: Metadata = {
-  title: "TFC Florstadt Stream Overlay",
-  description:
-    "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.",
+  metadataBase: siteUrl(),
+  title: {
+    default: "TFC Florstadt Stream Overlay",
+    template: "%s · TFC Florstadt",
+  },
+  description: siteDescription,
   applicationName: "TFC Florstadt Overlay",
   formatDetection: {
     telephone: false,
@@ -24,6 +43,18 @@ export const metadata: Metadata = {
       index: false,
       follow: false,
     },
+  },
+  openGraph: {
+    type: "website",
+    locale: "de_DE",
+    siteName: "TFC Florstadt Stream Overlay",
+    title: "TFC Florstadt Stream Overlay",
+    description: siteDescription,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TFC Florstadt Stream Overlay",
+    description: siteDescription,
   },
   icons: {
     icon: [

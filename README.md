@@ -80,6 +80,7 @@ Use Supabase when more than one machine must share a room, or when you deploy.
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only writes |
 | `ROOM_SESSION_SECRET` | Signs the Control session. At least 32 characters in production |
 | `CRON_SECRET` | Authorizes the Vercel cron routes. At least 16 characters |
+| `NEXT_PUBLIC_SITE_URL` | Optional canonical origin for OG/share links (e.g. `https://overlay.example.com`). On Vercel, production URL is used if unset |
 
 Leave the Supabase variables empty for the in-memory store.
 
