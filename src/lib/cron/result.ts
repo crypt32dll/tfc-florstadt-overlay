@@ -1,6 +1,6 @@
 /**
  * Machine contract for Vercel cron routes.
- * Do not reuse ActionResult — that interface is UI-facing (German copy + data).
+ * Do not reuse ActionResult — that envelope is UI actions (codes + optional German message).
  */
 
 export type CronSkipReason = "supabase_not_configured";

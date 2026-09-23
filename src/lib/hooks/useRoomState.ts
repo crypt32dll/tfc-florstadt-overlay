@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getRoomState } from "@/app/actions/rooms";
+import { actionErrorMessage } from "@/lib/action/result";
 import { clientLog } from "@/lib/logger.client";
 import { normalizeState } from "@/lib/match/migrate";
 import type { MatchState } from "@/lib/match/types";
@@ -47,7 +48,7 @@ export function useRoomState(
   const refresh = useCallback(async () => {
     const res = await getRoomState(roomId);
     if (!res.ok) {
-      setError(res.error);
+      setError(actionErrorMessage(res));
       setConnected(false);
       return null;
     }
@@ -71,9 +72,9 @@ export function useRoomState(
         const res = await getRoomState(roomId);
         if (cancelled) return;
         if (!res.ok) {
-          setError(res.error);
+          setError(actionErrorMessage(res));
           setConnected(false);
-          log.warn("poll failed", res.error);
+          log.warn("poll failed", res.code);
           return;
         }
         setError(null);

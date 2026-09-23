@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { createRoom } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { actionErrorMessage } from "@/lib/action/result";
 import { createRoomSchema } from "@/lib/match/schema";
 
 type FieldErrors = {
@@ -51,7 +52,7 @@ export function CreateRoomForm() {
     startTransition(async () => {
       const res = await createRoom(parsed.data);
       if (!res.ok) {
-        setError(res.error);
+        setError(actionErrorMessage(res));
         return;
       }
       setCreated({ roomId: res.data.roomId, pin: res.data.pin });

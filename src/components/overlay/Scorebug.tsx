@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { formatTimer, getElapsedMs } from "@/lib/match/format";
-import { normalizeState } from "@/lib/match/migrate";
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
 
@@ -31,8 +30,7 @@ function LiveTimerDigits({ state }: { state: MatchState }) {
   );
 }
 
-export function Scorebug({ state: raw }: { state: MatchState }) {
-  const state = normalizeState(raw);
+export function Scorebug({ state }: { state: MatchState }) {
   const pulseKey = `${state.teamA.score}-${state.teamB.score}-${state.sets.a}-${state.sets.b}`;
   const reduceMotion = useReducedMotion();
   const need = setsToWin(state.matchFormat);

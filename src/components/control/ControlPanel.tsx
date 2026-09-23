@@ -316,7 +316,11 @@ export function ControlPanel({ roomId, initialState }: Props) {
             onBlur={() => {
               const next = startingDraft.trim() || null;
               if (next !== (state.startingMessage ?? null)) {
-                run({ type: "setStartingMessage", message: next });
+                run({
+                  type: "setOverlayMessage",
+                  slot: "starting",
+                  message: next,
+                });
               }
             }}
             className="glass-input py-2 text-sm normal-case tracking-normal text-white"
@@ -332,7 +336,11 @@ export function ControlPanel({ roomId, initialState }: Props) {
             onBlur={() => {
               const next = brbDraft.trim() || null;
               if (next !== (state.brbMessage ?? null)) {
-                run({ type: "setBrbMessage", message: next });
+                run({
+                  type: "setOverlayMessage",
+                  slot: "brb",
+                  message: next,
+                });
               }
             }}
             className="glass-input py-2 text-sm normal-case tracking-normal text-white"
@@ -348,7 +356,11 @@ export function ControlPanel({ roomId, initialState }: Props) {
             onBlur={() => {
               const next = endingDraft.trim() || null;
               if (next !== (state.endingMessage ?? null)) {
-                run({ type: "setEndingMessage", message: next });
+                run({
+                  type: "setOverlayMessage",
+                  slot: "ending",
+                  message: next,
+                });
               }
             }}
             className="glass-input py-2 text-sm normal-case tracking-normal text-white"

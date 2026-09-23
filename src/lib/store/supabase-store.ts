@@ -76,6 +76,27 @@ export const supabaseStore: RoomStore = {
       throw error;
     }
   },
+  async saveIfRevision(room, expectedRevision) {
+    const sb = getAdmin();
+    const { data, error } = await sb
+      .from("rooms")
+      .update({
+        pin_hash: room.pinHash,
+        state: room.state,
+        updated_at: new Date(room.updatedAt).toISOString(),
+      })
+      .eq("id", room.id)
+      .filter("state->>revision", "eq", String(expectedRevision))
+      .select("id");
+    if (error) {
+      log.error("saveIfRevision failed", { roomId: room.id }, error);
+      throw error;
+    }
+    if (data?.length) return "ok";
+    const existing = await supabaseStore.get(room.id);
+    if (!existing) return "missing";
+    return "conflict";
+  },
   async deleteOlderThan(olderThanMs) {
     const sb = getAdmin();
     const cutoff = new Date(Date.now() - olderThanMs).toISOString();

@@ -1,5 +1,4 @@
 import { getElapsedMs } from "./format";
-import { normalizeState } from "./migrate";
 import { GAME_LINEUP, isSetComplete, setsToWin, winnerSide } from "./rules";
 import type { MatchState, RoomMutation, TeamSide } from "./types";
 
@@ -16,7 +15,6 @@ export function createInitialState(
     matchFormat: "bestOf3",
     lineupIndex: 0,
     gameType: GAME_LINEUP[0],
-    targetScore: null,
     timer: { running: false, startedAt: null, elapsedMs: 0 },
     startingMessage: "Gleich geht’s los",
     brbMessage: "Kurze Pause – gleich geht’s weiter.",
@@ -138,12 +136,11 @@ function completeGame(state: MatchState): MatchState {
   };
 }
 
+/** Assumes ingress already ran normalizeState — no migrate at the leaf. */
 export function applyMutation(
   state: MatchState,
   mutation: RoomMutation,
 ): MatchState {
-  state = normalizeState(state);
-
   switch (mutation.type) {
     case "goal": {
       const key = mutation.side === "a" ? "teamA" : "teamB";
@@ -267,14 +264,14 @@ export function applyMutation(
         transitionTo: null,
       });
     }
-    case "setStartingMessage": {
-      return bump({ ...state, startingMessage: mutation.message });
-    }
-    case "setBrbMessage": {
-      return bump({ ...state, brbMessage: mutation.message });
-    }
-    case "setEndingMessage": {
-      return bump({ ...state, endingMessage: mutation.message });
+    case "setOverlayMessage": {
+      const key =
+        mutation.slot === "starting"
+          ? "startingMessage"
+          : mutation.slot === "brb"
+            ? "brbMessage"
+            : "endingMessage";
+      return bump({ ...state, [key]: mutation.message });
     }
     case "swapSides": {
       return bump({
@@ -287,10 +284,6 @@ export function applyMutation(
     }
     case "setMatchFormat": {
       return bump({ ...state, matchFormat: mutation.format });
-    }
-    case "setTargetScore": {
-      // Legacy no-op kept for schema compat — format replaces targetScore
-      return bump({ ...state, targetScore: mutation.targetScore });
     }
     case "setSfx": {
       return bump({

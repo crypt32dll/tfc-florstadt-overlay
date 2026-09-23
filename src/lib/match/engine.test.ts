@@ -173,14 +173,29 @@ describe("applyMutation", () => {
     expect(s.timer.elapsedMs).toBeGreaterThanOrEqual(14_000);
   });
 
-  it("normalizeState backfills sfx", () => {
+  it("normalizeState backfills sfx and strips targetScore", () => {
     const raw = createInitialState();
     // @ts-expect-error intentional legacy shape
     delete raw.sfxEnabled;
     // @ts-expect-error intentional legacy shape
     delete raw.sfxVolume;
-    const n = normalizeState(raw);
+    const withLegacy = { ...raw, targetScore: 5 } as typeof raw & {
+      targetScore: number;
+    };
+    const n = normalizeState(withLegacy as typeof raw);
     expect(n.sfxEnabled).toBe(true);
     expect(n.sfxVolume).toBe(0.7);
+    expect("targetScore" in n).toBe(false);
+  });
+
+  it("setOverlayMessage updates the chosen slot", () => {
+    const s0 = createInitialState();
+    const s1 = applyMutation(s0, {
+      type: "setOverlayMessage",
+      slot: "brb",
+      message: "Bald weiter",
+    });
+    expect(s1.brbMessage).toBe("Bald weiter");
+    expect(s1.startingMessage).toBe(s0.startingMessage);
   });
 });

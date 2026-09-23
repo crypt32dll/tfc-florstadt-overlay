@@ -79,8 +79,8 @@ export function OverlayShell({
           replaceState(res.data.state);
           return;
         }
-        lastError = res.error;
-        log.warn("completeTransition failed", { attempt, error: res.error });
+        lastError = res.code;
+        log.warn("completeTransition failed", { attempt, code: res.code });
         await sleep(250 * (attempt + 1));
       }
 

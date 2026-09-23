@@ -1,15 +1,14 @@
-export type DestinationView =
-  | "startingSoon"
-  | "live"
-  | "standings"
-  | "brb"
-  | "ending";
+export type {
+  DestinationView,
+  MatchFormat,
+  OverlayMessageSlot,
+  RoomMutation,
+  TeamSide,
+} from "./schema";
+
+import type { DestinationView, MatchFormat } from "./schema";
 
 export type ActiveView = DestinationView | "transition";
-
-export type TeamSide = "a" | "b";
-
-export type MatchFormat = "bestOf3" | "bestOf5";
 
 export type GameType = "doppel" | "einzel";
 
@@ -37,8 +36,6 @@ export type MatchState = {
   /** 0–9 index in GAME_LINEUP */
   lineupIndex: number;
   gameType: GameType;
-  /** @deprecated use matchFormat */
-  targetScore: number | null;
   timer: {
     running: boolean;
     startedAt: number | null;
@@ -66,5 +63,3 @@ export type RoomRecord = {
   state: MatchState;
   updatedAt: number;
 };
-
-export type { RoomMutation } from "./schema";

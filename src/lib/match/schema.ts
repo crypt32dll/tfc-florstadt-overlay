@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-export const teamSideSchema = z.enum(["a", "b"]);
-
 /** Destination screens operators can request (excludes mid-sting "transition"). */
 export const DESTINATION_VIEWS = [
   "startingSoon",
@@ -11,7 +9,17 @@ export const DESTINATION_VIEWS = [
   "ending",
 ] as const;
 
-export const activeViewSchema = z.enum(DESTINATION_VIEWS);
+export const destinationViewSchema = z.enum(DESTINATION_VIEWS);
+export type DestinationView = z.infer<typeof destinationViewSchema>;
+
+export const matchFormatSchema = z.enum(["bestOf3", "bestOf5"]);
+export type MatchFormat = z.infer<typeof matchFormatSchema>;
+
+export const teamSideSchema = z.enum(["a", "b"]);
+export type TeamSide = z.infer<typeof teamSideSchema>;
+
+export const overlayMessageSlotSchema = z.enum(["starting", "brb", "ending"]);
+export type OverlayMessageSlot = z.infer<typeof overlayMessageSlotSchema>;
 
 export const teamNameSchema = z
   .string()
@@ -63,29 +71,18 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("finishSet") }),
   z.object({
     type: z.literal("setView"),
-    view: activeViewSchema,
+    view: destinationViewSchema,
   }),
   z.object({ type: z.literal("transitionComplete") }),
   z.object({
-    type: z.literal("setStartingMessage"),
-    message: z.string().trim().max(80).nullable(),
-  }),
-  z.object({
-    type: z.literal("setBrbMessage"),
-    message: z.string().trim().max(80).nullable(),
-  }),
-  z.object({
-    type: z.literal("setEndingMessage"),
+    type: z.literal("setOverlayMessage"),
+    slot: overlayMessageSlotSchema,
     message: z.string().trim().max(80).nullable(),
   }),
   z.object({ type: z.literal("swapSides") }),
   z.object({
     type: z.literal("setMatchFormat"),
-    format: z.enum(["bestOf3", "bestOf5"]),
-  }),
-  z.object({
-    type: z.literal("setTargetScore"),
-    targetScore: z.number().int().min(1).max(99).nullable(),
+    format: matchFormatSchema,
   }),
   z.object({
     type: z.literal("setSfx"),

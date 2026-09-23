@@ -7,6 +7,7 @@ import {
   mutateRoom,
   verifyRoomPin,
 } from "@/app/actions/rooms";
+import { actionErrorMessage } from "@/lib/action/result";
 import { clientLog } from "@/lib/logger.client";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
 
@@ -41,8 +42,8 @@ export function useControlSession(roomId: string) {
     try {
       const res = await verifyRoomPin({ roomId, pin: cleanPin });
       if (!res.ok) {
-        setAuthError(res.error || "PIN-Prüfung fehlgeschlagen");
-        log.warn("PIN failed", res.error);
+        setAuthError(actionErrorMessage(res));
+        log.warn("PIN failed", res.code);
         return;
       }
       setAuthorized(true);
@@ -110,14 +111,12 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
               : getRevision(),
           });
           if (!res.ok) {
-            if (res.error === "UNAUTHORIZED") {
+            if (res.code === "UNAUTHORIZED") {
               onUnauthorized();
-              setMutationError(
-                "Session abgelaufen – bitte PIN erneut eingeben.",
-              );
+              setMutationError(actionErrorMessage(res));
               log.warn("session expired", roomId);
-            } else if (res.error === "CONFLICT") {
-              showToast("Zustand aktualisiert – bitte erneut tippen.");
+            } else if (res.code === "CONFLICT") {
+              showToast(actionErrorMessage(res));
               log.warn("revision conflict", roomId);
               const fresh = await getRoomState(roomId);
               if (fresh.ok) {
@@ -126,9 +125,10 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
                 await refresh();
               }
             } else {
-              setMutationError(res.error);
-              showToast(res.error);
-              log.warn("mutation rejected", res.error);
+              const msg = actionErrorMessage(res);
+              setMutationError(msg);
+              showToast(msg);
+              log.warn("mutation rejected", res.code);
             }
             return;
           }
