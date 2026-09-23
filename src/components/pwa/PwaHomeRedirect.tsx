@@ -2,16 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { CONTROL_ROOM_STORAGE_KEY, isValidRoomId } from "@/lib/pwa/manifest";
-
-function isStandaloneDisplay(): boolean {
-  if (typeof window === "undefined") return false;
-  const mq = window.matchMedia("(display-mode: standalone)").matches;
-  const iosStandalone =
-    "standalone" in navigator &&
-    Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-  return mq || iosStandalone;
-}
+import {
+  CONTROL_ROOM_STORAGE_KEY,
+  isStandaloneDisplay,
+  isValidRoomId,
+} from "@/lib/pwa/manifest";
 
 /**
  * If the installed PWA still has start_url `/`, bounce to the last Control room

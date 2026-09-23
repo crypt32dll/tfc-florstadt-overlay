@@ -57,9 +57,32 @@ export function siteManifest(): MetadataRoute.Manifest {
 }
 
 export const CONTROL_ROOM_STORAGE_KEY = "tfc:last-control-room";
+/** User dismissed the install hint or confirmed the PWA is already installed. */
+export const PWA_INSTALL_DISMISSED_KEY = "tfc:pwa-install-dismissed";
+export const PWA_INSTALLED_KEY = "tfc:pwa-installed";
 
 const ROOM_ID_RE = /^[a-z0-9]{4,32}$/i;
 
 export function isValidRoomId(roomId: string): boolean {
   return ROOM_ID_RE.test(roomId);
+}
+
+export function isStandaloneDisplay(): boolean {
+  if (typeof window === "undefined") return false;
+  const mq = window.matchMedia("(display-mode: standalone)").matches;
+  const iosStandalone =
+    "standalone" in navigator &&
+    Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+  return mq || iosStandalone;
+}
+
+export function isIosSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const iOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const webkit = /WebKit/.test(ua);
+  const notOther = !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  return iOS && webkit && notOther;
 }
