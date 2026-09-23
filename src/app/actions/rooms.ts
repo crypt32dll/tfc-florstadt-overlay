@@ -11,11 +11,8 @@ import {
   getAuthorizedRoomId,
 } from "@/lib/auth/session";
 import { actionLog } from "@/lib/logger.server";
-import {
-  applyMutation,
-  createInitialState,
-  normalizeState,
-} from "@/lib/match/defaults";
+import { applyMutation, createInitialState } from "@/lib/match/engine";
+import { normalizeState } from "@/lib/match/migrate";
 import {
   createRoomSchema,
   mutationSchema,

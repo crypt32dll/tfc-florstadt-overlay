@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getRoomState } from "@/app/actions/rooms";
 import { clientLog } from "@/lib/logger.client";
+import { normalizeState } from "@/lib/match/migrate";
 import type { MatchState } from "@/lib/match/types";
 import {
   createBrowserSupabase,
@@ -11,22 +12,36 @@ import {
 
 const log = clientLog("room-state");
 
-export function useRoomState(roomId: string, initialState: MatchState) {
-  const [state, setState] = useState<MatchState>(initialState);
+type Options = {
+  /** When false, skip realtime/poll (parent already owns Room sync). */
+  enabled?: boolean;
+};
+
+export function useRoomState(
+  roomId: string,
+  initialState: MatchState,
+  options?: Options,
+) {
+  const enabled = options?.enabled !== false;
+  const [state, setState] = useState<MatchState>(() =>
+    normalizeState(initialState),
+  );
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const revisionRef = useRef(initialState.revision);
+  const revisionRef = useRef(normalizeState(initialState).revision);
 
   const applyRemote = useCallback((next: MatchState) => {
-    if (next.revision <= revisionRef.current) return;
-    revisionRef.current = next.revision;
-    setState(next);
+    const normalized = normalizeState(next);
+    if (normalized.revision <= revisionRef.current) return;
+    revisionRef.current = normalized.revision;
+    setState(normalized);
   }, []);
 
   /** Force-replace local state (e.g. after CONFLICT resync). */
   const replaceState = useCallback((next: MatchState) => {
-    revisionRef.current = next.revision;
-    setState(next);
+    const normalized = normalizeState(next);
+    revisionRef.current = normalized.revision;
+    setState(normalized);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -43,6 +58,8 @@ export function useRoomState(roomId: string, initialState: MatchState) {
   }, [roomId, replaceState]);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let cancelled = false;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
     let channel: ReturnType<
@@ -133,7 +150,7 @@ export function useRoomState(roomId: string, initialState: MatchState) {
         void sb.removeChannel(channel);
       }
     };
-  }, [roomId, applyRemote]);
+  }, [roomId, applyRemote, enabled]);
 
   return {
     state,

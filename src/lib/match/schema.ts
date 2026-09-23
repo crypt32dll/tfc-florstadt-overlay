@@ -2,13 +2,16 @@ import { z } from "zod";
 
 export const teamSideSchema = z.enum(["a", "b"]);
 
-export const activeViewSchema = z.enum([
+/** Destination screens operators can request (excludes mid-sting "transition"). */
+export const DESTINATION_VIEWS = [
   "startingSoon",
   "live",
   "standings",
   "brb",
   "ending",
-]);
+] as const;
+
+export const activeViewSchema = z.enum(DESTINATION_VIEWS);
 
 export const teamNameSchema = z
   .string()
@@ -96,4 +99,5 @@ export const mutationSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type MutationInput = z.infer<typeof mutationSchema>;
+/** Single source of truth for RoomMutation — Zod schema, not a hand-written twin. */
+export type RoomMutation = z.infer<typeof mutationSchema>;

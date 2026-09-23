@@ -3,11 +3,8 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
-import {
-  formatTimer,
-  getElapsedMs,
-  normalizeState,
-} from "@/lib/match/defaults";
+import { formatTimer, getElapsedMs } from "@/lib/match/format";
+import { normalizeState } from "@/lib/match/migrate";
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
 

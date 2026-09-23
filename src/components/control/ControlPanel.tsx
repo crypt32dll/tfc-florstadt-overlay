@@ -1,27 +1,21 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-  useTransition,
-} from "react";
-import {
-  checkControlAuth,
-  getRoomState,
-  mutateRoom,
-  verifyRoomPin,
-} from "@/app/actions/rooms";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import {
+  useControlSession,
+  useRoomMutate,
+} from "@/lib/hooks/useControlProtocol";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import { useSyncedState } from "@/lib/hooks/useSyncedState";
-import { clientLog } from "@/lib/logger.client";
-import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
+import { formatTimer, getElapsedMs } from "@/lib/match/format";
 import { GAME_LINEUP } from "@/lib/match/rules";
-import type { ActiveView, MatchState } from "@/lib/match/types";
-
-const log = clientLog("control");
+import { DESTINATION_VIEWS } from "@/lib/match/schema";
+import type {
+  ActiveView,
+  DestinationView,
+  MatchState,
+} from "@/lib/match/types";
 
 function subscribeNow(onStoreChange: () => void, running: boolean) {
   if (!running) return () => {};
@@ -59,12 +53,20 @@ export function ControlPanel({ roomId, initialState }: Props) {
     roomId,
     initialState,
   );
-  const [authorized, setAuthorized] = useState(false);
-  const [pin, setPin] = useState("");
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
-  const [pinLoading, setPinLoading] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const session = useControlSession(roomId);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const { run, confirmRun, pending, toast, mutationError } = useRoomMutate(
+    roomId,
+    {
+      replaceState,
+      refresh,
+      getRevision: () => stateRef.current.revision,
+      onUnauthorized: () => session.setAuthorized(false),
+    },
+  );
+
   const [startingDraft, setStartingDraft] = useSyncedState(
     state.startingMessage ?? "",
   );
@@ -75,115 +77,10 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const [volumeDraft, setVolumeDraft] = useSyncedState(
     Math.round((state.sfxVolume ?? 0.7) * 100),
   );
-  const pinSubmitting = useRef(false);
-  const stateRef = useRef(state);
 
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-
-  useEffect(() => {
-    void checkControlAuth(roomId).then((res) => {
-      if (res.ok) setAuthorized(res.data.authorized);
-    });
-  }, [roomId]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const id = window.setTimeout(() => setToast(null), 3200);
-    return () => window.clearTimeout(id);
-  }, [toast]);
-
-  const showToast = (msg: string) => setToast(msg);
-
-  const run = (
-    mutation: Parameters<typeof mutateRoom>[1],
-    opts?: { skipRevisionCheck?: boolean },
-  ) => {
-    startTransition(async () => {
-      try {
-        const res = await mutateRoom(roomId, mutation, {
-          expectedRevision: opts?.skipRevisionCheck
-            ? undefined
-            : stateRef.current.revision,
-        });
-        if (!res.ok) {
-          if (res.error === "UNAUTHORIZED") {
-            setAuthorized(false);
-            setAuthError("Session abgelaufen – bitte PIN erneut eingeben.");
-            log.warn("session expired", roomId);
-          } else if (res.error === "CONFLICT") {
-            showToast("Zustand aktualisiert – bitte erneut tippen.");
-            log.warn("revision conflict", roomId);
-            const fresh = await getRoomState(roomId);
-            if (fresh.ok) {
-              replaceState(fresh.data.state);
-            } else {
-              await refresh();
-            }
-          } else {
-            setAuthError(res.error);
-            showToast(res.error);
-            log.warn("mutation rejected", res.error);
-          }
-          return;
-        }
-        setAuthError(null);
-        replaceState(res.data.state);
-      } catch (err) {
-        log.error("mutation network error", err);
-        const msg =
-          err instanceof Error
-            ? err.message
-            : "Netzwerkfehler – bitte erneut versuchen.";
-        setAuthError(msg);
-        showToast(msg);
-      }
-    });
-  };
-
-  const confirmRun = (
-    message: string,
-    mutation: Parameters<typeof mutateRoom>[1],
-  ) => {
-    if (typeof window !== "undefined" && !window.confirm(message)) return;
-    run(mutation);
-  };
-
-  const onPinSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (pinSubmitting.current || pinLoading) return;
-
-    const cleanPin = pin.replace(/\D/g, "");
-    if (cleanPin.length < 4 || cleanPin.length > 6) {
-      setAuthError("PIN muss 4–6 Ziffern haben.");
-      return;
-    }
-
-    pinSubmitting.current = true;
-    setPinLoading(true);
-    setAuthError(null);
-    try {
-      const res = await verifyRoomPin({ roomId, pin: cleanPin });
-      if (!res.ok) {
-        setAuthError(res.error || "PIN-Prüfung fehlgeschlagen");
-        log.warn("PIN failed", res.error);
-        return;
-      }
-      setAuthorized(true);
-      setPin("");
-    } catch (err) {
-      log.error("PIN network error", err);
-      setAuthError(
-        err instanceof Error
-          ? err.message
-          : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
-      );
-    } finally {
-      pinSubmitting.current = false;
-      setPinLoading(false);
-    }
-  };
+  const authError = mutationError ?? session.authError;
+  const { authorized, pin, setPin, setAuthError, pinLoading, onPinSubmit } =
+    session;
 
   if (!authorized) {
     return (
@@ -593,17 +490,11 @@ function ViewSwitcher({
   pending,
 }: {
   active: ActiveView;
-  onSelect: (view: Exclude<ActiveView, "transition">) => void;
+  onSelect: (view: DestinationView) => void;
   pending: boolean;
 }) {
-  const views: Exclude<ActiveView, "transition">[] = [
-    "startingSoon",
-    "live",
-    "standings",
-    "brb",
-    "ending",
-  ];
-  const labels: Record<Exclude<ActiveView, "transition">, string> = {
+  const views: DestinationView[] = [...DESTINATION_VIEWS];
+  const labels: Record<DestinationView, string> = {
     startingSoon: "Soon",
     live: "Live",
     standings: "Stand",

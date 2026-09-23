@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { OverlayShell } from "@/components/overlay/OverlayShell";
+import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { MatchState } from "@/lib/match/types";
 
 type Props = {
@@ -18,8 +13,10 @@ type Props = {
 };
 
 export function LabClient({ roomId, initialState, pinHint }: Props) {
-  const [meta, setMeta] = useState(initialState);
-  const [connected, setConnected] = useState(true);
+  const { state, replaceState, refresh, connected } = useRoomState(
+    roomId,
+    initialState,
+  );
   const [backdrop, setBackdrop] = useState<"checker" | "stream">("stream");
   const [qr, setQr] = useState<string>("");
   const origin = useSyncExternalStore(
@@ -29,14 +26,6 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
   );
   const [copied, setCopied] = useState(false);
   const [showPin, setShowPin] = useState(false);
-
-  const onConnectionChange = useCallback((ok: boolean) => {
-    setConnected(ok);
-  }, []);
-
-  const onStateChange = useCallback((next: MatchState) => {
-    setMeta(next);
-  }, []);
 
   const controlUrl = useMemo(
     () => (origin ? `${origin}/control/${roomId}` : ""),
@@ -97,8 +86,7 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
               roomId={roomId}
               initialState={initialState}
               mode="lab"
-              onConnectionChange={onConnectionChange}
-              onStateChange={onStateChange}
+              sync={{ state, replaceState, connected, refresh }}
             />
           </div>
         </div>
@@ -127,12 +115,12 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-muted">View</dt>
-            <dd className="uppercase">{meta.activeView}</dd>
+            <dd className="uppercase">{state.activeView}</dd>
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-muted">Stand</dt>
             <dd className="font-display text-xl">
-              {meta.teamA.score}:{meta.teamB.score}
+              {state.teamA.score}:{state.teamB.score}
             </dd>
           </div>
           <div className="flex justify-between gap-2">

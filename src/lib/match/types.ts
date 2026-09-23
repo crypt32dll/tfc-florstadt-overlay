@@ -1,10 +1,11 @@
-export type ActiveView =
+export type DestinationView =
   | "startingSoon"
   | "live"
   | "standings"
   | "brb"
-  | "ending"
-  | "transition";
+  | "ending";
+
+export type ActiveView = DestinationView | "transition";
 
 export type TeamSide = "a" | "b";
 
@@ -26,7 +27,7 @@ export type MatchHistoryEntry = {
 
 export type MatchState = {
   activeView: ActiveView;
-  transitionTo: Exclude<ActiveView, "transition"> | null;
+  transitionTo: DestinationView | null;
   /** Goals in the current set */
   teamA: { name: string; score: number };
   teamB: { name: string; score: number };
@@ -66,21 +67,4 @@ export type RoomRecord = {
   updatedAt: number;
 };
 
-export type RoomMutation =
-  | { type: "goal"; side: TeamSide; delta: 1 | -1 }
-  | { type: "setName"; side: TeamSide; name: string }
-  | { type: "timer"; action: "start" | "pause" | "reset" }
-  | { type: "resetMatch" }
-  | { type: "finishMatch" }
-  | { type: "finishSet" }
-  | { type: "setView"; view: Exclude<ActiveView, "transition"> }
-  | { type: "transitionComplete" }
-  | { type: "setStartingMessage"; message: string | null }
-  | { type: "setBrbMessage"; message: string | null }
-  | { type: "setEndingMessage"; message: string | null }
-  | { type: "swapSides" }
-  | { type: "setMatchFormat"; format: MatchFormat }
-  | { type: "setTargetScore"; targetScore: number | null }
-  | { type: "setSfx"; enabled?: boolean; volume?: number }
-  | { type: "sfxTest" }
-  | { type: "setLineupIndex"; index: number };
+export type { RoomMutation } from "./schema";

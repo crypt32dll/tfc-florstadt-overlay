@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getRoomState } from "@/app/actions/rooms";
 import { ControlPanel } from "@/components/control/ControlPanel";
+import { RememberControlRoom } from "@/components/control/RememberControlRoom";
 
 export default async function ControlPage({
   params,
@@ -11,5 +12,10 @@ export default async function ControlPage({
   const res = await getRoomState(roomId);
   if (!res.ok) notFound();
 
-  return <ControlPanel roomId={roomId} initialState={res.data.state} />;
+  return (
+    <>
+      <RememberControlRoom roomId={roomId} />
+      <ControlPanel roomId={roomId} initialState={res.data.state} />
+    </>
+  );
 }

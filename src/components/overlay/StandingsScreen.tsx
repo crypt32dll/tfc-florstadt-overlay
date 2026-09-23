@@ -2,7 +2,8 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { formatTimer, normalizeState } from "@/lib/match/defaults";
+import { formatTimer } from "@/lib/match/format";
+import { normalizeState } from "@/lib/match/migrate";
 import type { MatchState } from "@/lib/match/types";
 
 export function StandingsScreen({ state: raw }: { state: MatchState }) {

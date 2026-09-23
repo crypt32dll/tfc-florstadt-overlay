@@ -7,8 +7,8 @@ import { completeTransition } from "@/app/actions/rooms";
 import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import { clientLog } from "@/lib/logger.client";
-import { applyMutation, normalizeState } from "@/lib/match/defaults";
 import type { MatchState } from "@/lib/match/types";
+import { isShowingView } from "@/lib/match/views";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
@@ -22,14 +22,23 @@ const KickerTransition = dynamic(
   { ssr: false },
 );
 
+export type RoomSync = {
+  state: MatchState;
+  replaceState: (next: MatchState) => void;
+  connected: boolean;
+  refresh: () => Promise<MatchState | null>;
+};
+
 type Props = {
   roomId: string;
   initialState: MatchState;
   /** Lab shows opaque stage chrome; OBS overlay is fully transparent outside panels */
   mode?: "overlay" | "lab";
-  /** Optional: bubble connection status to Lab sidebar */
-  onConnectionChange?: (connected: boolean) => void;
-  onStateChange?: (state: MatchState) => void;
+  /**
+   * Parent-owned Room sync (Lab). When set, the shell does not open a second
+   * realtime/poll subscription.
+   */
+  sync?: RoomSync;
 };
 
 async function sleep(ms: number) {
@@ -40,17 +49,16 @@ export function OverlayShell({
   roomId,
   initialState,
   mode = "overlay",
-  onConnectionChange,
-  onStateChange,
+  sync,
 }: Props) {
-  const { state, replaceState, connected } = useRoomState(roomId, initialState);
+  const owned = useRoomState(roomId, initialState, { enabled: !sync });
+  const state = sync?.state ?? owned.state;
+  const replaceState = sync?.replaceState ?? owned.replaceState;
+  const connected = sync?.connected ?? owned.connected;
+  const refresh = sync?.refresh ?? owned.refresh;
+
   useOverlaySfx(state);
   const completingRef = useRef(false);
-  const stateRef = useRef(state);
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   useEffect(() => {
     // Dynamic import keeps three.js out of the initial overlay chunk
@@ -59,14 +67,6 @@ export function OverlayShell({
       m.preloadKickerTexture(),
     );
   }, []);
-
-  useEffect(() => {
-    onConnectionChange?.(connected);
-  }, [connected, onConnectionChange]);
-
-  useEffect(() => {
-    onStateChange?.(state);
-  }, [state, onStateChange]);
 
   const onTransitionComplete = useCallback(async () => {
     if (completingRef.current) return;
@@ -84,19 +84,16 @@ export function OverlayShell({
         await sleep(250 * (attempt + 1));
       }
 
+      // Server remains MatchState authority — refresh only, no local applyMutation.
       log.error(
-        "completeTransition giving up – applying local fallback",
+        "completeTransition giving up – refreshing from store",
         lastError,
       );
-      replaceState(
-        normalizeState(
-          applyMutation(stateRef.current, { type: "transitionComplete" }),
-        ),
-      );
+      await refresh();
     } finally {
       completingRef.current = false;
     }
-  }, [roomId, replaceState]);
+  }, [roomId, replaceState, refresh]);
 
   return (
     <div
@@ -108,29 +105,15 @@ export function OverlayShell({
       style={mode === "overlay" ? { width: 1920, height: 1080 } : undefined}
     >
       <AnimatePresence mode="sync">
-        {(state.activeView === "startingSoon" ||
-          (state.activeView === "transition" &&
-            state.transitionTo === "startingSoon")) && (
+        {isShowingView(state, "startingSoon") && (
           <StartingSoonScreen key="soon" state={state} />
         )}
-        {(state.activeView === "live" ||
-          (state.activeView === "transition" &&
-            state.transitionTo === "live")) && (
-          <Scorebug key="live" state={state} />
-        )}
-        {(state.activeView === "standings" ||
-          (state.activeView === "transition" &&
-            state.transitionTo === "standings")) && (
+        {isShowingView(state, "live") && <Scorebug key="live" state={state} />}
+        {isShowingView(state, "standings") && (
           <StandingsScreen key="standings" state={state} />
         )}
-        {(state.activeView === "brb" ||
-          (state.activeView === "transition" &&
-            state.transitionTo === "brb")) && (
-          <BrbScreen key="brb" state={state} />
-        )}
-        {(state.activeView === "ending" ||
-          (state.activeView === "transition" &&
-            state.transitionTo === "ending")) && (
+        {isShowingView(state, "brb") && <BrbScreen key="brb" state={state} />}
+        {isShowingView(state, "ending") && (
           <EndingScreen key="ending" state={state} />
         )}
       </AnimatePresence>

@@ -20,7 +20,7 @@ One room has three surfaces:
 | Surface | Path | Who uses it |
 | --- | --- | --- |
 | Preview Lab | `/lab/[roomId]` | Laptop, without Twitch or OBS |
-| Control | `/control/[roomId]` | Phone (PIN, installable as a PWA) |
+| Control | `/control/[roomId]` | Phone (PIN; install PWA **from this page** so the icon opens Control) |
 | Overlay | `/overlay/[roomId]` | OBS browser source |
 
 Creating a room on `/` issues a 4-digit PIN. Control stores a hashed PIN and an httpOnly session cookie. Overlay and Lab only receive match state.
@@ -39,6 +39,7 @@ Without Supabase env vars the app keeps rooms in memory. With Supabase, Lab, Con
 - Set and session totals, plus a history of finished games
 - Overlay sounds for a goal, a finished set, and a screen change (Web Audio in the OBS source)
 - QR code in the Lab so the phone opens Control on the same room
+- Control-scoped web manifest (`start_url` = `/control/[roomId]`) so “Add to Home Screen” / PWA launches Control, not `/`
 
 ## Getting started
 
