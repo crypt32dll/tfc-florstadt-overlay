@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <div className="app-shell flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">
       <div className="glass-panel-strong max-w-md space-y-4 p-8">
-        <BrandMark size={64} className="mx-auto" />
+        <BrandMark size={96} className="mx-auto" />
         <h1 className="font-display text-4xl tracking-wide text-white uppercase">
           Raum nicht gefunden
         </h1>
