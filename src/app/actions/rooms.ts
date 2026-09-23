@@ -17,6 +17,7 @@ import {
 } from "@/lib/match/schema";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
 import { getStore, hasSupabaseConfig } from "@/lib/store";
+import { ZodError } from "zod";
 
 const roomId = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 8);
 
@@ -32,14 +33,15 @@ export async function createRoom(input?: {
   ActionResult<{ roomId: string; pin: string; storeMode: "memory" | "supabase" }>
 > {
   try {
-    const parsed = createRoomSchema.parse(input ?? {});
+    const parsed = createRoomSchema.parse({
+      pin: input?.pin,
+      teamA: input?.teamA ?? "",
+      teamB: input?.teamB ?? "",
+    });
     const pin = parsed.pin ?? generatePin(4);
     const id = roomId();
     const store = await getStore();
-    const state = createInitialState(
-      parsed.teamA || "Team A",
-      parsed.teamB || "Team B",
-    );
+    const state = createInitialState(parsed.teamA, parsed.teamB);
     await store.create({
       id,
       pinHash: await hashPin(pin),
@@ -52,12 +54,15 @@ export async function createRoom(input?: {
       data: { roomId: id, pin, storeMode: store.mode },
     };
   } catch (e) {
+    if (e instanceof ZodError) {
+      const first = e.issues[0]?.message;
+      return {
+        ok: false,
+        error: first ?? "Eingaben prüfen",
+      };
+    }
     const message =
-      e && typeof e === "object" && "message" in e && typeof e.message === "string"
-        ? e.message
-        : e instanceof Error
-          ? e.message
-          : "Raum konnte nicht erstellt werden";
+      e instanceof Error ? e.message : "Raum konnte nicht erstellt werden";
     return { ok: false, error: message };
   }
 }

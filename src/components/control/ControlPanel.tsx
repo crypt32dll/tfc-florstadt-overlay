@@ -6,7 +6,7 @@ import {
   mutateRoom,
   verifyRoomPin,
 } from "@/app/actions/rooms";
-import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { ActiveView, MatchState } from "@/lib/match/types";
@@ -45,7 +45,12 @@ export function ControlPanel({ roomId, initialState }: Props) {
     if (!timerMounted || !state.timer.running) return;
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
-  }, [timerMounted, state.timer.running, state.timer.startedAt, state.timer.elapsedMs]);
+  }, [
+    timerMounted,
+    state.timer.running,
+    state.timer.startedAt,
+    state.timer.elapsedMs,
+  ]);
 
   const displayedElapsed =
     !timerMounted || !state.timer.running
@@ -69,7 +74,9 @@ export function ControlPanel({ roomId, initialState }: Props) {
         setState(res.data.state);
       } catch (err) {
         setAuthError(
-          err instanceof Error ? err.message : "Netzwerkfehler – bitte erneut versuchen.",
+          err instanceof Error
+            ? err.message
+            : "Netzwerkfehler – bitte erneut versuchen.",
         );
       }
     });
@@ -110,51 +117,49 @@ export function ControlPanel({ roomId, initialState }: Props) {
 
   if (!authorized) {
     return (
-      <div className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div className="flex flex-1 flex-col justify-center gap-6 pb-36">
-          <BrandLogo
-            priority
-            className="mx-auto object-contain"
-            width={220}
-            height={92}
-          />
-          <h1 className="text-center font-[family-name:var(--font-teko)] text-4xl uppercase tracking-wide">
-            Control
-          </h1>
-          <p className="text-center text-sm text-black/60">
-            PIN eingeben, um Tore und Screens zu steuern.
-          </p>
-          <form
-            id="pin-form"
-            onSubmit={(e) => {
-              void onPinSubmit(e);
-            }}
-            className="flex flex-col gap-3"
-          >
-            <input
-              name="pin"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => {
-                setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
-                setAuthError(null);
+      <div className="app-shell flex min-h-dvh flex-col px-5 pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 pb-36">
+          <div className="glass-panel-strong space-y-5 p-6">
+            <BrandMark size={96} priority className="mx-auto drop-shadow-lg" />
+            <div className="space-y-1 text-center">
+              <h1 className="font-display text-4xl tracking-wide text-white uppercase">
+                Control
+              </h1>
+              <p className="text-sm text-muted">
+                PIN eingeben, um Tore und Screens zu steuern.
+              </p>
+            </div>
+            <form
+              id="pin-form"
+              onSubmit={(e) => {
+                void onPinSubmit(e);
               }}
-              placeholder="PIN"
-              enterKeyHint="go"
-              autoComplete="one-time-code"
-              className="rounded-sm border-2 border-black px-4 py-4 text-center text-2xl tracking-[0.4em] outline-none focus:border-[var(--brand-accent)]"
-            />
-          </form>
+            >
+              <input
+                name="pin"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => {
+                  setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
+                  setAuthError(null);
+                }}
+                placeholder="PIN"
+                enterKeyHint="go"
+                autoComplete="one-time-code"
+                className="glass-input py-4 text-center text-2xl tracking-[0.4em] text-white"
+              />
+            </form>
+          </div>
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-black/10 bg-white px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/55 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
           <div className="mx-auto max-w-md space-y-2">
             {authError && (
               <p
                 role="alert"
-                className="rounded-sm bg-red-50 px-3 py-2 text-center text-sm font-medium text-red-700"
+                className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/15 px-3 py-2 text-center text-sm font-medium text-red-200"
               >
                 {authError}
               </p>
@@ -166,7 +171,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
                 void onPinSubmit();
               }}
               disabled={pinLoading}
-              className="relative z-50 w-full touch-manipulation select-none bg-[var(--brand-accent)] px-4 py-4 font-[family-name:var(--font-teko)] text-2xl tracking-wide text-white uppercase active:opacity-90 disabled:opacity-60"
+              className="btn btn-primary relative z-50 w-full text-2xl"
             >
               {pinLoading ? "Prüfe…" : "Freischalten"}
             </button>
@@ -177,23 +182,25 @@ export function ControlPanel({ roomId, initialState }: Props) {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <div className="flex items-center justify-between gap-3">
-        <BrandLogo width={140} height={58} className="object-contain" />
-        <div className="text-right text-xs text-black/50">
-          <div>{connected ? "Live" : "Verbinde…"}</div>
-          <div className="font-mono">{roomId}</div>
+    <div className="app-shell mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-3">
+        <BrandMark size={48} />
+        <div className="text-right text-xs">
+          <div className={connected ? "badge-live" : "text-muted"}>
+            {connected ? "Live" : "Verbinde…"}
+          </div>
+          <div className="mt-1 font-mono text-muted">{roomId}</div>
         </div>
       </div>
 
-      <div className="rounded-sm border-2 border-black bg-black px-4 py-3 text-white">
+      <div className="glass-panel-strong px-4 py-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           <TeamNameEditor
             name={state.teamA.name}
             onSave={(name) => run({ type: "setName", side: "a", name })}
             align="right"
           />
-          <div className="font-[family-name:var(--font-teko)] text-5xl tabular-nums">
+          <div className="font-display text-5xl tabular-nums text-white">
             {state.teamA.score}
             <span className="text-[var(--brand-accent)]">:</span>
             {state.teamB.score}
@@ -204,13 +211,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
             align="left"
           />
         </div>
-        <div className="mt-1 text-center font-[family-name:var(--font-teko)] text-2xl text-[var(--brand-accent)] tabular-nums">
+        <div className="mt-1 text-center font-display text-2xl text-[var(--brand-accent)] tabular-nums">
           {formatTimer(displayedElapsed)}
         </div>
       </div>
 
       {(error || authError) && (
-        <p className="text-center text-sm text-red-600">{error ?? authError}</p>
+        <p
+          role="alert"
+          className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200"
+        >
+          {error ?? authError}
+        </p>
       )}
 
       <div className="grid grid-cols-2 gap-3">
@@ -282,7 +294,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
           type="button"
           disabled={pending}
           onClick={() => run({ type: "finishMatch" })}
-          className="border-2 border-black bg-black px-3 py-3 font-[family-name:var(--font-teko)] text-xl tracking-wide text-white uppercase disabled:opacity-50"
+          className="btn btn-danger text-xl"
         >
           Spiel beenden
         </button>
@@ -305,12 +317,14 @@ function GoalButton({
       type="button"
       disabled={disabled}
       onClick={onGoal}
-      className="flex min-h-28 flex-col items-center justify-center rounded-sm bg-[var(--brand-accent)] px-2 py-4 text-white active:scale-[0.98] disabled:opacity-50"
+      className="btn btn-primary min-h-28 flex-col gap-1 px-2 py-4 text-white"
     >
-      <span className="font-[family-name:var(--font-teko)] text-4xl tracking-wide uppercase">
+      <span className="font-display text-4xl tracking-wide uppercase">
         Tor +
       </span>
-      <span className="max-w-full truncate text-sm opacity-90">{label}</span>
+      <span className="max-w-full truncate text-sm font-sans font-normal normal-case tracking-normal opacity-90">
+        {label}
+      </span>
     </button>
   );
 }
@@ -329,7 +343,7 @@ function SmallBtn({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="border-2 border-black px-2 py-3 font-[family-name:var(--font-teko)] text-lg tracking-wide uppercase transition hover:bg-black hover:text-white disabled:opacity-40"
+      className="btn btn-ghost min-h-12 px-2 py-3 text-lg"
     >
       {children}
     </button>
@@ -365,11 +379,9 @@ function ViewSwitcher({
             type="button"
             disabled={pending || active === "transition"}
             onClick={() => onSelect(view)}
-            className={`border-2 px-1 py-3 font-[family-name:var(--font-teko)] text-sm tracking-wide uppercase sm:text-base ${
-              isActive
-                ? "border-[var(--brand-accent)] bg-[var(--brand-accent)] text-white"
-                : "border-black"
-            } disabled:opacity-40`}
+            className={`btn min-h-12 px-1 py-3 text-sm sm:text-base ${
+              isActive ? "btn-primary" : "btn-ghost"
+            }`}
           >
             {labels[view]}
           </button>
@@ -404,7 +416,7 @@ function TeamNameEditor({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className={`w-full border border-white/30 bg-transparent px-1 py-0.5 text-sm outline-none ${
+        className={`w-full rounded border border-white/30 bg-black/30 px-1 py-0.5 text-sm outline-none focus:border-[var(--brand-accent)] ${
           align === "right" ? "text-right" : "text-left"
         }`}
         autoFocus
@@ -416,7 +428,7 @@ function TeamNameEditor({
     <button
       type="button"
       onClick={() => setEditing(true)}
-      className={`truncate font-[family-name:var(--font-teko)] text-xl uppercase ${
+      className={`truncate font-display text-xl text-white/90 uppercase hover:text-[var(--brand-accent)] ${
         align === "right" ? "text-right" : "text-left"
       }`}
     >

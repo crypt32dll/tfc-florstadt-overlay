@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { getRoomState } from "@/app/actions/rooms";
 import { OverlayShell } from "@/components/overlay/OverlayShell";
-import { BrandLogo } from "@/components/brand/BrandLogo";
+import { BrandMark } from "@/components/brand/BrandMark";
 import type { MatchState } from "@/lib/match/types";
 
 type Props = {
@@ -63,16 +63,16 @@ export function LabClient({
   }, [controlUrl]);
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#111] text-white lg:flex-row">
+    <div className="app-shell flex min-h-dvh flex-col text-white lg:flex-row">
       <div className="relative flex flex-1 items-center justify-center overflow-hidden p-4 lg:p-8">
         <div
-          className={`relative aspect-video w-full max-w-6xl overflow-hidden border border-white/20 shadow-2xl ${
-            backdrop === "checker" ? "bg-checker" : "bg-[#1a1a1a]"
+          className={`relative aspect-video w-full max-w-6xl overflow-hidden rounded-[var(--radius-panel)] border border-white/15 shadow-[0_24px_80px_rgba(0,0,0,0.45)] ${
+            backdrop === "checker" ? "bg-checker" : "bg-[#0d121a]"
           }`}
         >
           {backdrop === "stream" && (
             <div
-              className="absolute inset-0 opacity-40"
+              className="absolute inset-0 opacity-45"
               style={{
                 backgroundImage:
                   "radial-gradient(circle at 30% 40%, #0693e3 0%, transparent 45%), radial-gradient(circle at 70% 60%, #444 0%, #111 55%)",
@@ -89,54 +89,64 @@ export function LabClient({
         </div>
       </div>
 
-      <aside className="flex w-full flex-col gap-4 border-t border-white/10 bg-[#0a0a0a] p-5 lg:w-80 lg:border-t-0 lg:border-l">
-        <BrandLogo width={160} height={67} className="object-contain" />
-        <div>
-          <h1 className="font-[family-name:var(--font-teko)] text-3xl uppercase tracking-wide">
+      <aside className="glass-panel m-0 flex w-full flex-col gap-4 rounded-none border-x-0 border-b-0 p-5 lg:m-4 lg:w-80 lg:rounded-[var(--radius-panel)] lg:border">
+        <div className="flex justify-center py-1">
+          <BrandMark size={96} className="drop-shadow-[0_0_16px_rgba(6,147,227,0.35)]" />
+        </div>
+        <div className="text-center">
+          <h1 className="font-display text-3xl tracking-wide uppercase">
             Preview Lab
           </h1>
-          <p className="mt-1 text-sm text-white/60">
+          <p className="mt-1 text-sm text-muted">
             Test ohne Twitch &amp; OBS. Handy scannen → Control.
           </p>
         </div>
 
-        <dl className="space-y-1 text-sm">
+        <dl className="space-y-2 text-sm">
           <div className="flex justify-between gap-2">
-            <dt className="text-white/50">Raum</dt>
+            <dt className="text-muted">Raum</dt>
             <dd className="font-mono">{roomId}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-white/50">View</dt>
+            <dt className="text-muted">View</dt>
             <dd className="uppercase">{meta.activeView}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-white/50">Stand</dt>
-            <dd className="font-[family-name:var(--font-teko)] text-xl">
+            <dt className="text-muted">Stand</dt>
+            <dd className="font-display text-xl">
               {meta.teamA.score}:{meta.teamB.score}
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-white/50">Status</dt>
-            <dd>{connected ? "verbunden" : "…"}</dd>
+            <dt className="text-muted">Status</dt>
+            <dd>
+              {connected ? (
+                <span className="badge-live">verbunden</span>
+              ) : (
+                "…"
+              )}
+            </dd>
           </div>
           {pinHint && (
             <div className="flex justify-between gap-2">
-              <dt className="text-white/50">PIN</dt>
+              <dt className="text-muted">PIN</dt>
               <dd className="font-mono tracking-widest">{pinHint}</dd>
             </div>
           )}
         </dl>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && (
+          <p className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setBackdrop("stream")}
-            className={`flex-1 border px-2 py-2 text-xs uppercase ${
-              backdrop === "stream"
-                ? "border-[var(--brand-accent)] bg-[var(--brand-accent)]"
-                : "border-white/30"
+            className={`btn flex-1 text-xs ${
+              backdrop === "stream" ? "btn-primary" : "btn-ghost"
             }`}
           >
             Stream
@@ -144,10 +154,8 @@ export function LabClient({
           <button
             type="button"
             onClick={() => setBackdrop("checker")}
-            className={`flex-1 border px-2 py-2 text-xs uppercase ${
-              backdrop === "checker"
-                ? "border-[var(--brand-accent)] bg-[var(--brand-accent)]"
-                : "border-white/30"
+            className={`btn flex-1 text-xs ${
+              backdrop === "checker" ? "btn-primary" : "btn-ghost"
             }`}
           >
             Transparenz
@@ -155,7 +163,7 @@ export function LabClient({
         </div>
 
         {qr && (
-          <div className="rounded-sm bg-white p-3">
+          <div className="rounded-[var(--radius-control)] border border-white/15 bg-white p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qr} alt="QR Control" className="mx-auto" />
             <p className="mt-2 text-center text-xs text-black/70">
@@ -164,16 +172,16 @@ export function LabClient({
           </div>
         )}
 
-        <div className="space-y-2 text-xs break-all text-white/60">
+        <div className="space-y-2 text-xs break-all text-muted">
           <div>
             <div className="text-white/40">Control</div>
-            <a className="text-[var(--brand-accent)]" href={controlUrl}>
+            <a className="text-[var(--brand-accent)] hover:underline" href={controlUrl}>
               {controlUrl}
             </a>
           </div>
           <div>
             <div className="text-white/40">OBS Overlay</div>
-            <a className="text-[var(--brand-accent)]" href={overlayUrl}>
+            <a className="text-[var(--brand-accent)] hover:underline" href={overlayUrl}>
               {overlayUrl}
             </a>
           </div>

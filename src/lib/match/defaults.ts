@@ -1,8 +1,8 @@
 import type { MatchState, RoomMutation } from "./types";
 
 export function createInitialState(
-  teamA = "Team A",
-  teamB = "Team B",
+  teamA = "TFC Florstadt",
+  teamB = "",
 ): MatchState {
   return {
     activeView: "startingSoon",

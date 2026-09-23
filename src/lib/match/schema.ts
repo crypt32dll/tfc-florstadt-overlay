@@ -2,14 +2,30 @@ import { z } from "zod";
 
 export const teamSideSchema = z.enum(["a", "b"]);
 
+export const teamNameSchema = z
+  .string()
+  .trim()
+  .min(1, "Teamname darf nicht leer sein")
+  .max(32, "Maximal 32 Zeichen");
+
 export const createRoomSchema = z.object({
   pin: z
     .string()
     .regex(/^\d{4,6}$/, "PIN muss 4–6 Ziffern haben")
     .optional(),
-  teamA: z.string().trim().max(32).optional(),
-  teamB: z.string().trim().max(32).optional(),
+  teamA: z
+    .string()
+    .trim()
+    .min(1, "Team A: Name eingeben")
+    .max(32, "Team A: Maximal 32 Zeichen"),
+  teamB: z
+    .string()
+    .trim()
+    .min(1, "Team B: Name eingeben")
+    .max(32, "Team B: Maximal 32 Zeichen"),
 });
+
+export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 
 export const verifyPinSchema = z.object({
   roomId: z.string().min(4).max(32),

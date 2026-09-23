@@ -1,5 +1,7 @@
 "use client";
 
+import { BrandMark } from "@/components/brand/BrandMark";
+
 export default function Error({
   error,
   reset,
@@ -8,18 +10,17 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-      <h1 className="font-[family-name:var(--font-teko)] text-4xl uppercase">
-        Fehler
-      </h1>
-      <p className="max-w-md text-sm text-black/70">{error.message}</p>
-      <button
-        type="button"
-        onClick={reset}
-        className="border-2 border-black px-4 py-2 font-[family-name:var(--font-teko)] text-xl uppercase"
-      >
-        Nochmal
-      </button>
+    <div className="app-shell flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">
+      <div className="glass-panel-strong max-w-md space-y-4 p-8">
+        <BrandMark size={64} className="mx-auto" />
+        <h1 className="font-display text-4xl tracking-wide text-white uppercase">
+          Fehler
+        </h1>
+        <p className="max-w-md text-sm text-muted">{error.message}</p>
+        <button type="button" onClick={reset} className="btn btn-primary px-6 text-xl">
+          Nochmal
+        </button>
+      </div>
     </div>
   );
 }
