@@ -101,6 +101,13 @@ describe("applyMutation", () => {
     expect(s1.sfxVolume).toBe(0.2);
   });
 
+  it("sfxTest bumps ping", () => {
+    const s0 = createInitialState();
+    const s1 = applyMutation(s0, { type: "sfxTest" });
+    expect(s1.sfxPing).toBe((s0.sfxPing ?? 0) + 1);
+    expect(s1.sfxEnabled).toBe(true);
+  });
+
   it("goal from standings switches to live", () => {
     let s = createInitialState("TFC", "Gegner");
     s = { ...s, activeView: "standings", transitionTo: null };

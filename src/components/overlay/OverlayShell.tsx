@@ -2,17 +2,21 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { completeTransition } from "@/app/actions/rooms";
 import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
+import { applyMutation, normalizeState } from "@/lib/match/defaults";
 import type { MatchState } from "@/lib/match/types";
+import { clientLog } from "@/lib/logger.client";
 import { preloadKickerTexture } from "@/lib/three/createLogoKicker";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
 import { StartingSoonScreen } from "./StartingSoonScreen";
 import { StandingsScreen } from "./StandingsScreen";
+
+const log = clientLog("overlay-shell");
 
 const KickerTransition = dynamic(
   () =>
@@ -25,26 +29,69 @@ type Props = {
   initialState: MatchState;
   /** Lab shows opaque stage chrome; OBS overlay is fully transparent outside panels */
   mode?: "overlay" | "lab";
+  /** Optional: bubble connection status to Lab sidebar */
+  onConnectionChange?: (connected: boolean) => void;
+  onStateChange?: (state: MatchState) => void;
 };
+
+async function sleep(ms: number) {
+  await new Promise((r) => setTimeout(r, ms));
+}
 
 export function OverlayShell({
   roomId,
   initialState,
   mode = "overlay",
+  onConnectionChange,
+  onStateChange,
 }: Props) {
-  const { state, setState } = useRoomState(roomId, initialState);
+  const { state, setState, replaceState, connected } = useRoomState(
+    roomId,
+    initialState,
+  );
   useOverlaySfx(state);
+  const completingRef = useRef(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     void preloadKickerTexture();
   }, []);
 
+  useEffect(() => {
+    onConnectionChange?.(connected);
+  }, [connected, onConnectionChange]);
+
+  useEffect(() => {
+    onStateChange?.(state);
+  }, [state, onStateChange]);
+
   const onTransitionComplete = useCallback(async () => {
-    const res = await completeTransition(roomId);
-    if (res.ok) {
-      setState(res.data.state);
+    if (completingRef.current) return;
+    completingRef.current = true;
+    try {
+      let lastError: string | null = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const res = await completeTransition(roomId);
+        if (res.ok) {
+          replaceState(res.data.state);
+          return;
+        }
+        lastError = res.error;
+        log.warn("completeTransition failed", { attempt, error: res.error });
+        await sleep(250 * (attempt + 1));
+      }
+
+      log.error("completeTransition giving up – applying local fallback", lastError);
+      replaceState(
+        normalizeState(
+          applyMutation(stateRef.current, { type: "transitionComplete" }),
+        ),
+      );
+    } finally {
+      completingRef.current = false;
     }
-  }, [roomId, setState]);
+  }, [roomId, replaceState]);
 
   return (
     <div
@@ -55,7 +102,6 @@ export function OverlayShell({
       }
       style={mode === "overlay" ? { width: 1920, height: 1080 } : undefined}
     >
-      {/* sync: target view mounts under kicker without waiting for exit FLIP */}
       <AnimatePresence mode="sync">
         {(state.activeView === "startingSoon" ||
           (state.activeView === "transition" &&
@@ -89,6 +135,19 @@ export function OverlayShell({
           key={`kick-${state.revision}-${state.transitionTo}`}
           onComplete={onTransitionComplete}
         />
+      )}
+
+      {!connected && (
+        <div
+          role="status"
+          className={`pointer-events-none absolute z-50 rounded-md border border-amber-400/40 bg-black/70 px-2.5 py-1 text-[0.65rem] tracking-wide text-amber-100 uppercase ${
+            mode === "lab"
+              ? "bottom-3 left-3"
+              : "bottom-4 left-4 opacity-70"
+          }`}
+        >
+          Sync …
+        </div>
       )}
     </div>
   );

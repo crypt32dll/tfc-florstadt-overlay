@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "framer-motion";
 import type { MatchState } from "@/lib/match/types";
 
-type SfxKind = "goal" | "switch" | "set";
+export type SfxKind = "goal" | "switch" | "set";
 
 function playTone(
   ctx: AudioContext,
@@ -36,7 +36,7 @@ function playTone(
   osc.stop(t0 + duration + 0.02);
 }
 
-function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
+export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
   const v = Math.min(1, Math.max(0, volume)) * 0.35;
   if (kind === "goal") {
     playTone(ctx, { freq: 520, duration: 0.12, type: "triangle", volume: v });
@@ -67,7 +67,6 @@ function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
     });
     return;
   }
-  // switch / whoosh-ish descending chirp
   playTone(ctx, { freq: 420, duration: 0.22, type: "sawtooth", volume: v * 0.45 });
   playTone(ctx, {
     freq: 280,
@@ -76,6 +75,20 @@ function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
     volume: v * 0.35,
     when: 0.1,
   });
+}
+
+function ensureAudioContext(ref: { current: AudioContext | null }) {
+  if (!ref.current) {
+    const AC =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    ref.current = new AC();
+  }
+  if (ref.current.state === "suspended") {
+    void ref.current.resume();
+  }
+  return ref.current;
 }
 
 /**
@@ -90,7 +103,7 @@ export function useOverlaySfx(state: MatchState) {
     goals: number;
     sets: number;
     view: MatchState["activeView"];
-    transitionTo: MatchState["transitionTo"];
+    sfxPing: number;
   } | null>(null);
   const lastGoalAt = useRef(0);
 
@@ -101,45 +114,36 @@ export function useOverlaySfx(state: MatchState) {
       goals: state.teamA.score + state.teamB.score,
       sets: state.sets.a + state.sets.b,
       view: state.activeView,
-      transitionTo: state.transitionTo,
+      sfxPing: state.sfxPing ?? 0,
     };
     if (!prev) return;
-    if (!state.sfxEnabled || reduceMotion) return;
+    if (reduceMotion) return;
     if (state.revision <= prev.revision) return;
 
-    const ensureCtx = () => {
-      if (!ctxRef.current) {
-        const AC =
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext })
-            .webkitAudioContext;
-        ctxRef.current = new AC();
-      }
-      if (ctxRef.current.state === "suspended") {
-        void ctxRef.current.resume();
-      }
-      return ctxRef.current;
-    };
-
     try {
+      // Explicit test ping from Control (always plays when ping bumps)
+      if ((state.sfxPing ?? 0) > prev.sfxPing) {
+        playSfx(ensureAudioContext(ctxRef), "switch", state.sfxVolume || 0.7);
+        return;
+      }
+
+      if (!state.sfxEnabled) return;
+
       const goals = state.teamA.score + state.teamB.score;
       const sets = state.sets.a + state.sets.b;
       const now = Date.now();
 
       if (sets > prev.sets) {
-        playSfx(ensureCtx(), "set", state.sfxVolume);
+        playSfx(ensureAudioContext(ctxRef), "set", state.sfxVolume);
         return;
       }
       if (goals > prev.goals && now - lastGoalAt.current > 180) {
         lastGoalAt.current = now;
-        playSfx(ensureCtx(), "goal", state.sfxVolume);
+        playSfx(ensureAudioContext(ctxRef), "goal", state.sfxVolume);
         return;
       }
-      if (
-        state.activeView === "transition" &&
-        prev.view !== "transition"
-      ) {
-        playSfx(ensureCtx(), "switch", state.sfxVolume);
+      if (state.activeView === "transition" && prev.view !== "transition") {
+        playSfx(ensureAudioContext(ctxRef), "switch", state.sfxVolume);
       }
     } catch {
       // Audio may be blocked until OBS enables source audio

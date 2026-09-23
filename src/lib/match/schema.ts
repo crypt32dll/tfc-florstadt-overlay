@@ -67,6 +67,14 @@ export const mutationSchema = z.discriminatedUnion("type", [
     type: z.literal("setStartingMessage"),
     message: z.string().trim().max(80).nullable(),
   }),
+  z.object({
+    type: z.literal("setBrbMessage"),
+    message: z.string().trim().max(80).nullable(),
+  }),
+  z.object({
+    type: z.literal("setEndingMessage"),
+    message: z.string().trim().max(80).nullable(),
+  }),
   z.object({ type: z.literal("swapSides") }),
   z.object({
     type: z.literal("setMatchFormat"),
@@ -81,6 +89,7 @@ export const mutationSchema = z.discriminatedUnion("type", [
     enabled: z.boolean().optional(),
     volume: z.number().min(0).max(1).optional(),
   }),
+  z.object({ type: z.literal("sfxTest") }),
   z.object({
     type: z.literal("setLineupIndex"),
     index: z.number().int().min(0).max(9),

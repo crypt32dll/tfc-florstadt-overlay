@@ -27,7 +27,8 @@ export function EndingScreen({ state }: { state: MatchState }) {
         Danke fürs Zuschauen
       </h1>
       <p className="mt-4 max-w-xl text-center font-[family-name:var(--font-open-sans)] text-lg font-light text-white/85">
-        Follow für die nächsten Matches aus der Wetterau.
+        {state.endingMessage ??
+          "Follow für die nächsten Matches aus der Wetterau."}
       </p>
       <div className="overlay-glass overlay-glass-accent mt-10 w-full max-w-3xl px-6 py-5 md:px-8">
         <div className="text-center text-xs tracking-[0.22em] text-[var(--brand-accent)] uppercase">

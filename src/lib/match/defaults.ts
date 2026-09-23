@@ -22,10 +22,13 @@ export function createInitialState(
     targetScore: null,
     timer: { running: false, startedAt: null, elapsedMs: 0 },
     startingMessage: "Gleich geht’s los",
+    brbMessage: "Kurze Pause – gleich geht’s weiter.",
+    endingMessage: "Follow für die nächsten Matches aus der Wetterau.",
     history: [],
     sessionWins: { a: 0, b: 0 },
     sfxEnabled: true,
     sfxVolume: 0.7,
+    sfxPing: 0,
     updatedAt: Date.now(),
     revision: 1,
   };
@@ -43,11 +46,17 @@ export function normalizeState(raw: MatchState): MatchState {
     matchFormat: raw.matchFormat === "bestOf5" ? "bestOf5" : "bestOf3",
     lineupIndex,
     gameType: raw.gameType ?? GAME_LINEUP[lineupIndex],
+    brbMessage:
+      raw.brbMessage ?? "Kurze Pause – gleich geht’s weiter.",
+    endingMessage:
+      raw.endingMessage ??
+      "Follow für die nächsten Matches aus der Wetterau.",
     sfxEnabled: raw.sfxEnabled ?? true,
     sfxVolume:
       typeof raw.sfxVolume === "number"
         ? Math.min(1, Math.max(0, raw.sfxVolume))
         : 0.7,
+    sfxPing: raw.sfxPing ?? 0,
   };
 }
 
@@ -300,6 +309,12 @@ export function applyMutation(
     case "setStartingMessage": {
       return bump({ ...state, startingMessage: mutation.message });
     }
+    case "setBrbMessage": {
+      return bump({ ...state, brbMessage: mutation.message });
+    }
+    case "setEndingMessage": {
+      return bump({ ...state, endingMessage: mutation.message });
+    }
     case "swapSides": {
       return bump({
         ...state,
@@ -324,6 +339,13 @@ export function applyMutation(
           mutation.volume != null
             ? Math.min(1, Math.max(0, mutation.volume))
             : state.sfxVolume,
+      });
+    }
+    case "sfxTest": {
+      return bump({
+        ...state,
+        sfxPing: (state.sfxPing ?? 0) + 1,
+        sfxEnabled: true,
       });
     }
     case "setLineupIndex": {

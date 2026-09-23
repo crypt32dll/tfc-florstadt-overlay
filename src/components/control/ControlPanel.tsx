@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import {
   checkControlAuth,
+  getRoomState,
   mutateRoom,
   verifyRoomPin,
 } from "@/app/actions/rooms";
@@ -21,10 +22,8 @@ type Props = {
 };
 
 export function ControlPanel({ roomId, initialState }: Props) {
-  const { state, setState, connected, error } = useRoomState(
-    roomId,
-    initialState,
-  );
+  const { state, replaceState, refresh, connected, error } =
+    useRoomState(roomId, initialState);
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
@@ -36,7 +35,16 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const [startingDraft, setStartingDraft] = useState(
     initialState.startingMessage ?? "",
   );
+  const [brbDraft, setBrbDraft] = useState(initialState.brbMessage ?? "");
+  const [endingDraft, setEndingDraft] = useState(
+    initialState.endingMessage ?? "",
+  );
+  const [volumeDraft, setVolumeDraft] = useState(
+    Math.round((initialState.sfxVolume ?? 0.7) * 100),
+  );
   const pinSubmitting = useRef(false);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     void checkControlAuth(roomId).then((res) => {
@@ -47,6 +55,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
   useEffect(() => {
     setStartingDraft(state.startingMessage ?? "");
   }, [state.startingMessage]);
+
+  useEffect(() => {
+    setBrbDraft(state.brbMessage ?? "");
+  }, [state.brbMessage]);
+
+  useEffect(() => {
+    setEndingDraft(state.endingMessage ?? "");
+  }, [state.endingMessage]);
+
+  useEffect(() => {
+    setVolumeDraft(Math.round((state.sfxVolume ?? 0.7) * 100));
+  }, [state.sfxVolume]);
 
   useEffect(() => {
     setTimerMounted(true);
@@ -77,11 +97,16 @@ export function ControlPanel({ roomId, initialState }: Props) {
 
   const showToast = (msg: string) => setToast(msg);
 
-  const run = (mutation: Parameters<typeof mutateRoom>[1]) => {
+  const run = (
+    mutation: Parameters<typeof mutateRoom>[1],
+    opts?: { skipRevisionCheck?: boolean },
+  ) => {
     startTransition(async () => {
       try {
         const res = await mutateRoom(roomId, mutation, {
-          expectedRevision: state.revision,
+          expectedRevision: opts?.skipRevisionCheck
+            ? undefined
+            : stateRef.current.revision,
         });
         if (!res.ok) {
           if (res.error === "UNAUTHORIZED") {
@@ -91,6 +116,12 @@ export function ControlPanel({ roomId, initialState }: Props) {
           } else if (res.error === "CONFLICT") {
             showToast("Zustand aktualisiert – bitte erneut tippen.");
             log.warn("revision conflict", roomId);
+            const fresh = await getRoomState(roomId);
+            if (fresh.ok) {
+              replaceState(fresh.data.state);
+            } else {
+              await refresh();
+            }
           } else {
             setAuthError(res.error);
             showToast(res.error);
@@ -99,7 +130,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
           return;
         }
         setAuthError(null);
-        setState(res.data.state);
+        replaceState(res.data.state);
       } catch (err) {
         log.error("mutation network error", err);
         const msg =
@@ -368,7 +399,20 @@ export function ControlPanel({ roomId, initialState }: Props) {
         onSelect={(view) => run({ type: "setView", view })}
       />
 
-      <div className="glass-panel space-y-2 p-3">
+      {state.activeView === "transition" && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            run({ type: "transitionComplete" }, { skipRevisionCheck: true })
+          }
+          className="btn btn-primary w-full text-lg"
+        >
+          Transition abschließen (Escape)
+        </button>
+      )}
+
+      <div className="glass-panel space-y-3 p-3">
         <label className="block text-xs tracking-wide text-muted uppercase">
           Starting-Soon Text
         </label>
@@ -385,31 +429,84 @@ export function ControlPanel({ roomId, initialState }: Props) {
           className="glass-input py-2 text-sm text-white"
           placeholder="Gleich geht’s los"
         />
+        <label className="block text-xs tracking-wide text-muted uppercase">
+          BRB Text
+        </label>
+        <input
+          value={brbDraft}
+          maxLength={80}
+          onChange={(e) => setBrbDraft(e.target.value)}
+          onBlur={() => {
+            const next = brbDraft.trim() || null;
+            if (next !== (state.brbMessage ?? null)) {
+              run({ type: "setBrbMessage", message: next });
+            }
+          }}
+          className="glass-input py-2 text-sm text-white"
+          placeholder="Kurze Pause – gleich geht’s weiter."
+        />
+        <label className="block text-xs tracking-wide text-muted uppercase">
+          Ending Text
+        </label>
+        <input
+          value={endingDraft}
+          maxLength={80}
+          onChange={(e) => setEndingDraft(e.target.value)}
+          onBlur={() => {
+            const next = endingDraft.trim() || null;
+            if (next !== (state.endingMessage ?? null)) {
+              run({ type: "setEndingMessage", message: next });
+            }
+          }}
+          className="glass-input py-2 text-sm text-white"
+          placeholder="Follow für die nächsten Matches…"
+        />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="glass-panel space-y-2 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs tracking-wide text-muted uppercase">
+            Overlay Sound
+          </span>
+          <SmallBtn
+            disabled={pending}
+            onClick={() =>
+              run({
+                type: "setSfx",
+                enabled: !state.sfxEnabled,
+              })
+            }
+          >
+            {state.sfxEnabled ? "An" : "Aus"}
+          </SmallBtn>
+        </div>
+        <label className="flex items-center gap-3 text-sm text-muted">
+          <span className="w-10 tabular-nums">{volumeDraft}%</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={volumeDraft}
+            disabled={pending || !state.sfxEnabled}
+            onChange={(e) => setVolumeDraft(Number(e.target.value))}
+            onPointerUp={() => {
+              const next = volumeDraft / 100;
+              if (Math.abs(next - state.sfxVolume) > 0.01) {
+                run({ type: "setSfx", volume: next });
+              }
+            }}
+            className="w-full accent-[var(--brand-accent)]"
+          />
+        </label>
         <SmallBtn
           disabled={pending}
-          onClick={() =>
-            run({
-              type: "setSfx",
-              enabled: !state.sfxEnabled,
-            })
-          }
+          onClick={() => run({ type: "sfxTest" })}
         >
-          Sound {state.sfxEnabled ? "an" : "aus"}
+          Sound testen (Overlay/OBS)
         </SmallBtn>
-        <SmallBtn
-          disabled={pending || !state.sfxEnabled}
-          onClick={() =>
-            run({
-              type: "setSfx",
-              volume: state.sfxVolume >= 0.85 ? 0.4 : state.sfxVolume >= 0.55 ? 0.85 : 0.7,
-            })
-          }
-        >
-          Vol {(state.sfxVolume * 100).toFixed(0)}%
-        </SmallBtn>
+        <p className="text-[0.7rem] text-muted">
+          OBS: Audio der Browser-Source aktivieren, sonst hörst du nichts.
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-2">

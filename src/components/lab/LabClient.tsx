@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
-import { getRoomState } from "@/app/actions/rooms";
 import { OverlayShell } from "@/components/overlay/OverlayShell";
 import { BrandMark } from "@/components/brand/BrandMark";
 import type { MatchState } from "@/lib/match/types";
@@ -20,7 +19,6 @@ export function LabClient({
 }: Props) {
   const [meta, setMeta] = useState(initialState);
   const [connected, setConnected] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [backdrop, setBackdrop] = useState<"checker" | "stream">("stream");
   const [qr, setQr] = useState<string>("");
   const [origin, setOrigin] = useState("");
@@ -31,20 +29,13 @@ export function LabClient({
     setOrigin(window.location.origin);
   }, []);
 
-  useEffect(() => {
-    const id = setInterval(async () => {
-      const res = await getRoomState(roomId);
-      if (!res.ok) {
-        setError(res.error);
-        setConnected(false);
-        return;
-      }
-      setConnected(true);
-      setError(null);
-      setMeta(res.data.state);
-    }, 500);
-    return () => clearInterval(id);
-  }, [roomId]);
+  const onConnectionChange = useCallback((ok: boolean) => {
+    setConnected(ok);
+  }, []);
+
+  const onStateChange = useCallback((next: MatchState) => {
+    setMeta(next);
+  }, []);
 
   const controlUrl = useMemo(
     () => (origin ? `${origin}/control/${roomId}` : ""),
@@ -97,6 +88,8 @@ export function LabClient({
               roomId={roomId}
               initialState={initialState}
               mode="lab"
+              onConnectionChange={onConnectionChange}
+              onStateChange={onStateChange}
             />
           </div>
         </div>
@@ -136,7 +129,7 @@ export function LabClient({
               {connected ? (
                 <span className="badge-live">verbunden</span>
               ) : (
-                "…"
+                <span className="text-amber-200">Sync …</span>
               )}
             </dd>
           </div>
@@ -170,13 +163,7 @@ export function LabClient({
             role="status"
             className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
           >
-            Verbindung unterbrochen – Status aktualisiert sich verzögert.
-          </p>
-        )}
-
-        {error && (
-          <p className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
+            Verbindung unterbrochen – Overlay zeigt „Sync …“.
           </p>
         )}
 
@@ -229,7 +216,9 @@ export function LabClient({
           <ol className="mt-2 list-decimal space-y-1.5 pl-4">
             <li>Browser Source 1920×1080, Overlay-URL</li>
             <li>„Shutdown when not visible“ aus</li>
-            <li>Audio der Browser Source an (für Overlay-Sounds)</li>
+            <li>
+              Audio der Browser Source an – dann im Control „Sound testen“
+            </li>
             <li>Custom CSS für transparenten Body</li>
           </ol>
         </section>

@@ -27,7 +27,7 @@ export function BrbScreen({ state }: { state: MatchState }) {
         BRB
       </h1>
       <p className="mt-4 max-w-xl text-center font-[family-name:var(--font-open-sans)] text-lg font-light text-white/85">
-        Kurze Pause – gleich geht’s weiter.
+        {state.brbMessage ?? "Kurze Pause – gleich geht’s weiter."}
       </p>
       <div className="overlay-glass overlay-glass-accent mt-10 px-8 py-4 text-center">
         <div className="overlay-score text-3xl md:text-4xl">

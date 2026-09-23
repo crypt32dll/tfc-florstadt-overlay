@@ -44,6 +44,8 @@ export type MatchState = {
     elapsedMs: number;
   };
   startingMessage: string | null;
+  brbMessage: string | null;
+  endingMessage: string | null;
   history: MatchHistoryEntry[];
   /** Gesamt: won sets across the whole match */
   sessionWins: { a: number; b: number };
@@ -51,6 +53,8 @@ export type MatchState = {
   sfxEnabled: boolean;
   /** 0–1 */
   sfxVolume: number;
+  /** Bumped to trigger a one-shot SFX test on overlay clients */
+  sfxPing: number;
   updatedAt: number;
   revision: number;
 };
@@ -72,8 +76,11 @@ export type RoomMutation =
   | { type: "setView"; view: Exclude<ActiveView, "transition"> }
   | { type: "transitionComplete" }
   | { type: "setStartingMessage"; message: string | null }
+  | { type: "setBrbMessage"; message: string | null }
+  | { type: "setEndingMessage"; message: string | null }
   | { type: "swapSides" }
   | { type: "setMatchFormat"; format: MatchFormat }
   | { type: "setTargetScore"; targetScore: number | null }
   | { type: "setSfx"; enabled?: boolean; volume?: number }
+  | { type: "sfxTest" }
   | { type: "setLineupIndex"; index: number };
