@@ -51,11 +51,6 @@ export default function HomePage() {
                 abwählen
               </li>
             </ol>
-            <p className="mt-3 text-xs text-muted">
-              Der Overlay-Hintergrund ist bereits transparent — Custom CSS in
-              OBS brauchst du nicht. Es bleiben nur Scoreboard und Screens
-              sichtbar.
-            </p>
           </section>
         </aside>
       </div>
