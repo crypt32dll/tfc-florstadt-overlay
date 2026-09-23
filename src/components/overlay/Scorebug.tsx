@@ -64,44 +64,49 @@ export function Scorebug({ state: raw }: { state: MatchState }) {
             Gesamt {state.sessionWins.a}:{state.sessionWins.b}
           </span>
         </div>
-        <div className="flex items-center gap-3 px-4 py-3 md:gap-4 md:px-5">
-          <BrandMark
-            size={48}
-            className="shrink-0 drop-shadow-[0_0_12px_rgba(6,147,227,0.45)]"
-          />
-          <div className="overlay-divider h-11" />
-          <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-3 md:gap-4">
-            <div className="overlay-score truncate text-right text-2xl text-white md:text-3xl">
-              {state.teamA.name}
-            </div>
+        <div className="grid grid-cols-[5.75rem_minmax(0,1fr)_5.75rem] items-center px-4 py-3 md:grid-cols-[6.5rem_minmax(0,1fr)_6.5rem] md:px-5">
+          <div className="flex items-center justify-center">
+            <BrandMark
+              size={48}
+              className="shrink-0 drop-shadow-[0_0_12px_rgba(6,147,227,0.45)]"
+            />
+          </div>
+
+          <div className="relative flex min-h-[3.25rem] items-center md:min-h-[3.75rem]">
             <motion.div
               key={pulseKey}
               initial={reduceMotion ? false : { scale: 1.12 }}
               animate={{ scale: 1 }}
               transition={{ duration: reduceMotion ? 0 : 0.28 }}
-              className="overlay-score flex flex-col items-center leading-none"
+              className="overlay-score absolute top-1/2 left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center text-5xl leading-none text-white tabular-nums md:text-6xl"
+              aria-label={`Spielstand ${state.teamA.score} zu ${state.teamB.score}`}
             >
-              <div className="flex items-baseline gap-2 text-5xl text-white md:text-6xl">
-                <span>{state.teamA.score}</span>
-                <span className="text-3xl text-[var(--brand-accent)] md:text-4xl">
-                  :
-                </span>
-                <span>{state.teamB.score}</span>
-              </div>
-              <div className="mt-1 text-[0.6rem] tracking-[0.2em] text-white/50 uppercase">
-                Tore · Satz
-              </div>
+              <span className="inline-block w-[1.05em] text-center">
+                {state.teamA.score}
+              </span>
+              <span className="inline-flex w-[0.55em] items-center justify-center text-[0.62em] text-[var(--brand-accent)]">
+                :
+              </span>
+              <span className="inline-block w-[1.05em] text-center">
+                {state.teamB.score}
+              </span>
             </motion.div>
-            <div className="overlay-score truncate text-2xl text-white md:text-3xl">
-              {state.teamB.name}
+
+            <div className="grid w-full grid-cols-2 items-center">
+              <div className="overlay-score truncate pr-[3.6rem] text-right text-2xl leading-none text-white md:pr-[4.25rem] md:text-3xl">
+                {state.teamA.name}
+              </div>
+              <div className="overlay-score truncate pl-[3.6rem] text-left text-2xl leading-none text-white md:pl-[4.25rem] md:text-3xl">
+                {state.teamB.name}
+              </div>
             </div>
           </div>
-          <div className="overlay-divider h-11" />
-          <div className="min-w-[4.5rem] text-center">
-            <div className="text-[0.65rem] tracking-[0.18em] text-white/55 uppercase">
+
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="text-[0.65rem] leading-none tracking-[0.18em] text-white/55 uppercase">
               Zeit
             </div>
-            <div className="overlay-score text-2xl text-[var(--brand-accent)] tabular-nums md:text-3xl">
+            <div className="overlay-score mt-0.5 text-2xl leading-none text-[var(--brand-accent)] tabular-nums md:text-3xl">
               {formatTimer(elapsed)}
             </div>
           </div>

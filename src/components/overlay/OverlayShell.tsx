@@ -47,26 +47,21 @@ export function OverlayShell({
       style={mode === "overlay" ? { width: 1920, height: 1080 } : undefined}
     >
       <AnimatePresence mode="wait">
-        {state.activeView === "startingSoon" && (
+        {(state.activeView === "startingSoon" ||
+          (state.activeView === "transition" &&
+            state.transitionTo === "startingSoon")) && (
           <StartingSoonScreen key="soon" state={state} />
         )}
-        {state.activeView === "live" && (
+        {(state.activeView === "live" ||
+          (state.activeView === "transition" &&
+            state.transitionTo === "live")) && (
           <Scorebug key="live" state={state} />
         )}
-        {state.activeView === "standings" && (
+        {(state.activeView === "standings" ||
+          (state.activeView === "transition" &&
+            state.transitionTo === "standings")) && (
           <StandingsScreen key="standings" state={state} />
         )}
-        {state.activeView === "transition" && state.transitionTo === "live" && (
-          <Scorebug key="live-under" state={state} />
-        )}
-        {state.activeView === "transition" &&
-          state.transitionTo === "standings" && (
-            <StandingsScreen key="standings-under" state={state} />
-          )}
-        {state.activeView === "transition" &&
-          state.transitionTo === "startingSoon" && (
-            <StartingSoonScreen key="soon-under" state={state} />
-          )}
       </AnimatePresence>
 
       {state.activeView === "transition" && (
