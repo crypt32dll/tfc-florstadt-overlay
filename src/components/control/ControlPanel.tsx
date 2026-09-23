@@ -9,7 +9,10 @@ import {
 import { BrandMark } from "@/components/brand/BrandMark";
 import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
 import { useRoomState } from "@/lib/hooks/useRoomState";
+import { clientLog } from "@/lib/logger.client";
 import type { ActiveView, MatchState } from "@/lib/match/types";
+
+const log = clientLog("control");
 
 type Props = {
   roomId: string;
@@ -65,14 +68,17 @@ export function ControlPanel({ roomId, initialState }: Props) {
           if (res.error === "UNAUTHORIZED") {
             setAuthorized(false);
             setAuthError("Session abgelaufen – bitte PIN erneut eingeben.");
+            log.warn("session expired", roomId);
           } else {
             setAuthError(res.error);
+            log.warn("mutation rejected", res.error);
           }
           return;
         }
         setAuthError(null);
         setState(res.data.state);
       } catch (err) {
+        log.error("mutation network error", err);
         setAuthError(
           err instanceof Error
             ? err.message
@@ -99,11 +105,13 @@ export function ControlPanel({ roomId, initialState }: Props) {
       const res = await verifyRoomPin({ roomId, pin: cleanPin });
       if (!res.ok) {
         setAuthError(res.error || "PIN-Prüfung fehlgeschlagen");
+        log.warn("PIN failed", res.error);
         return;
       }
       setAuthorized(true);
       setPin("");
     } catch (err) {
+      log.error("PIN network error", err);
       setAuthError(
         err instanceof Error
           ? err.message

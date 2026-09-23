@@ -24,6 +24,7 @@ export function LabClient({
   const [backdrop, setBackdrop] = useState<"checker" | "stream">("stream");
   const [qr, setQr] = useState<string>("");
   const [origin, setOrigin] = useState("");
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -61,6 +62,17 @@ export function LabClient({
       color: { dark: "#111111", light: "#ffffff" },
     }).then(setQr);
   }, [controlUrl]);
+
+  const copyOverlayUrl = async () => {
+    if (!overlayUrl) return;
+    try {
+      await navigator.clipboard.writeText(overlayUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   return (
     <div className="app-shell flex min-h-dvh flex-col text-white lg:flex-row">
@@ -172,20 +184,16 @@ export function LabClient({
           </div>
         )}
 
-        <div className="space-y-2 text-xs break-all text-muted">
-          <div>
-            <div className="text-white/40">Control</div>
-            <a className="text-[var(--brand-accent)] hover:underline" href={controlUrl}>
-              {controlUrl}
-            </a>
-          </div>
-          <div>
-            <div className="text-white/40">OBS Overlay</div>
-            <a className="text-[var(--brand-accent)] hover:underline" href={overlayUrl}>
-              {overlayUrl}
-            </a>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => void copyOverlayUrl()}
+          disabled={!overlayUrl}
+          className={`btn w-full text-sm ${
+            copied ? "btn-primary" : "btn-ghost"
+          }`}
+        >
+          {copied ? "OBS-Link kopiert" : "OBS Overlay-Link kopieren"}
+        </button>
       </aside>
     </div>
   );

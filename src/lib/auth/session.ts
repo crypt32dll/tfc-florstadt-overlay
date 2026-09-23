@@ -1,8 +1,10 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { actionLog } from "@/lib/logger.server";
 
 const COOKIE_NAME = "tfc_room_session";
 const MAX_AGE_SEC = 60 * 60 * 12; // 12h
+const log = actionLog("session");
 
 function getSecret() {
   const secret =
@@ -48,7 +50,8 @@ export async function getAuthorizedRoomId(): Promise<string | null> {
     const { payload } = await jwtVerify(token, getSecret());
     const roomId = payload.roomId;
     return typeof roomId === "string" ? roomId : null;
-  } catch {
+  } catch (e) {
+    log.debug("invalid or expired session cookie", e);
     return null;
   }
 }

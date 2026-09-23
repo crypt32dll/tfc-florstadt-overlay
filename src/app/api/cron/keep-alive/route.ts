@@ -1,9 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { timingSafeEqual } from "node:crypto";
 import type { NextRequest } from "next/server";
+import { actionLog } from "@/lib/logger.server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const log = actionLog("cron:keep-alive");
 
 function isAuthorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -25,6 +28,7 @@ function isAuthorized(request: NextRequest): boolean {
  */
 export async function GET(request: NextRequest) {
   if (!isAuthorized(request)) {
+    log.warn("unauthorized cron request");
     return new Response("Unauthorized", { status: 401 });
   }
 
@@ -32,6 +36,7 @@ export async function GET(request: NextRequest) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key) {
+    log.info("skipped – supabase not configured");
     return Response.json({
       ok: true,
       skipped: true,
@@ -39,28 +44,41 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const sb = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  try {
+    const sb = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
-  const { error, count } = await sb
-    .from("rooms")
-    .select("id", { count: "exact", head: true });
+    const { error, count } = await sb
+      .from("rooms")
+      .select("id", { count: "exact", head: true });
 
-  if (error) {
+    if (error) {
+      log.error("keep-alive query failed", error);
+      return Response.json(
+        {
+          ok: false,
+          error: error.message,
+        },
+        { status: 502 },
+      );
+    }
+
+    log.info("keep-alive ok", { rooms: count ?? 0 });
+    return Response.json({
+      ok: true,
+      skipped: false,
+      rooms: count ?? 0,
+      at: new Date().toISOString(),
+    });
+  } catch (e) {
+    log.error("keep-alive crashed", e);
     return Response.json(
       {
         ok: false,
-        error: error.message,
+        error: e instanceof Error ? e.message : "unknown",
       },
-      { status: 502 },
+      { status: 500 },
     );
   }
-
-  return Response.json({
-    ok: true,
-    skipped: false,
-    rooms: count ?? 0,
-    at: new Date().toISOString(),
-  });
 }

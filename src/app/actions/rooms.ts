@@ -16,10 +16,12 @@ import {
   verifyPinSchema,
 } from "@/lib/match/schema";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
+import { actionLog } from "@/lib/logger.server";
 import { getStore, hasSupabaseConfig } from "@/lib/store";
 import { ZodError } from "zod";
 
 const roomId = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 8);
+const log = actionLog("rooms");
 
 export type ActionResult<T> =
   | { ok: true; data: T }
@@ -49,6 +51,7 @@ export async function createRoom(input?: {
       updatedAt: state.updatedAt,
     });
     await createRoomSession(id);
+    log.info("room created", { roomId: id, storeMode: store.mode });
     return {
       ok: true,
       data: { roomId: id, pin, storeMode: store.mode },
@@ -56,11 +59,13 @@ export async function createRoom(input?: {
   } catch (e) {
     if (e instanceof ZodError) {
       const first = e.issues[0]?.message;
+      log.warn("createRoom validation failed", { issues: e.issues });
       return {
         ok: false,
         error: first ?? "Eingaben prüfen",
       };
     }
+    log.error("createRoom failed", e);
     const message =
       e instanceof Error ? e.message : "Raum konnte nicht erstellt werden";
     return { ok: false, error: message };
@@ -79,6 +84,7 @@ export async function getRoomState(
       data: { state: normalizeState(room.state), storeMode: store.mode },
     };
   } catch (e) {
+    log.error("getRoomState failed", { roomId: roomIdParam }, e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Laden fehlgeschlagen",
@@ -96,6 +102,7 @@ export async function verifyRoomPin(input: {
     const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
     const rate = checkPinRateLimit(`${ip}:${parsed.roomId}`);
     if (!rate.ok) {
+      log.warn("PIN rate limited", { roomId: parsed.roomId, ip });
       return { ok: false, error: "Zu viele Versuche. Bitte kurz warten." };
     }
 
@@ -104,22 +111,29 @@ export async function verifyRoomPin(input: {
     if (!room) return { ok: false, error: "Raum nicht gefunden" };
 
     const valid = await verifyPin(parsed.pin, room.pinHash);
-    if (!valid) return { ok: false, error: "Falscher PIN" };
+    if (!valid) {
+      log.warn("PIN rejected", { roomId: parsed.roomId, ip });
+      return { ok: false, error: "Falscher PIN" };
+    }
 
     try {
       await createRoomSession(parsed.roomId);
     } catch (sessionErr) {
+      log.error("session cookie failed after PIN ok", { roomId: parsed.roomId }, sessionErr);
       const msg =
         sessionErr instanceof Error
           ? sessionErr.message
           : "Session konnte nicht gesetzt werden";
       return { ok: false, error: `Login ok, aber Cookie-Fehler: ${msg}` };
     }
+    log.info("PIN ok", { roomId: parsed.roomId });
     return { ok: true, data: { authorized: true } };
   } catch (e) {
     if (e && typeof e === "object" && "issues" in e) {
+      log.warn("verifyRoomPin validation failed", e);
       return { ok: false, error: "Ungültige PIN-Eingabe." };
     }
+    log.error("verifyRoomPin failed", { roomId: input.roomId }, e);
     const message =
       e && typeof e === "object" && "message" in e && typeof e.message === "string"
         ? e.message
@@ -164,8 +178,10 @@ export async function mutateRoom(
     return applyAndSave(roomIdParam, mutation);
   } catch (e) {
     if (e instanceof Error && e.message === "UNAUTHORIZED") {
+      log.warn("mutateRoom unauthorized", { roomId: roomIdParam });
       return { ok: false, error: "UNAUTHORIZED" };
     }
+    log.error("mutateRoom failed", { roomId: roomIdParam, mutation: mutationInput }, e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Aktion fehlgeschlagen",
@@ -180,6 +196,7 @@ export async function completeTransition(
   try {
     return applyAndSave(roomIdParam, { type: "transitionComplete" });
   } catch (e) {
+    log.error("completeTransition failed", { roomId: roomIdParam }, e);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Transition fehlgeschlagen",

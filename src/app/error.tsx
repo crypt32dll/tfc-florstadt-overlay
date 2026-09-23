@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { clientLog } from "@/lib/logger.client";
+
+const log = clientLog("error-boundary");
 
 export default function Error({
   error,
@@ -9,6 +13,10 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    log.error("app error boundary", error.message, error.digest);
+  }, [error]);
+
   return (
     <div className="app-shell flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">
       <div className="glass-panel-strong max-w-md space-y-4 p-8">

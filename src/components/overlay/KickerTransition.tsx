@@ -2,11 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
+import { clientLog } from "@/lib/logger.client";
 import {
   createLogoPlate,
   disposeObject3D,
   loadKickerTexture,
 } from "@/lib/three/createLogoKicker";
+
+const log = clientLog("kicker");
 
 type Props = {
   onComplete: () => void;
@@ -53,7 +56,8 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
       let texture: THREE.Texture;
       try {
         texture = await loadKickerTexture();
-      } catch {
+      } catch (e) {
+        log.error("texture load failed", e);
         if (!cancelled && !doneRef.current) {
           doneRef.current = true;
           void onCompleteRef.current();

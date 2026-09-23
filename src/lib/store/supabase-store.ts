@@ -1,6 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { MatchState, RoomRecord } from "@/lib/match/types";
+import { actionLog } from "@/lib/logger.server";
 import type { RoomStore } from "./index";
+
+const log = actionLog("supabase-store");
 
 type RoomRow = {
   id: string;
@@ -39,7 +42,10 @@ export const supabaseStore: RoomStore = {
       state: room.state,
       updated_at: new Date(room.updatedAt).toISOString(),
     });
-    if (error) throw error;
+    if (error) {
+      log.error("create failed", { roomId: room.id }, error);
+      throw error;
+    }
   },
   async get(roomId) {
     const sb = getAdmin();
@@ -48,7 +54,10 @@ export const supabaseStore: RoomStore = {
       .select("id,pin_hash,state,updated_at")
       .eq("id", roomId)
       .maybeSingle();
-    if (error) throw error;
+    if (error) {
+      log.error("get failed", { roomId }, error);
+      throw error;
+    }
     if (!data) return null;
     return rowToRoom(data as RoomRow);
   },
@@ -62,6 +71,9 @@ export const supabaseStore: RoomStore = {
         updated_at: new Date(room.updatedAt).toISOString(),
       })
       .eq("id", room.id);
-    if (error) throw error;
+    if (error) {
+      log.error("save failed", { roomId: room.id }, error);
+      throw error;
+    }
   },
 };

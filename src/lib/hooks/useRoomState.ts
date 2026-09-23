@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getRoomState } from "@/app/actions/rooms";
 import type { MatchState } from "@/lib/match/types";
+import { clientLog } from "@/lib/logger.client";
 import {
   createBrowserSupabase,
   isSupabaseBrowserEnabled,
 } from "@/lib/supabase/browser";
+
+const log = clientLog("room-state");
 
 export function useRoomState(roomId: string, initialState: MatchState) {
   const [state, setState] = useState<MatchState>(initialState);
@@ -49,6 +52,9 @@ export function useRoomState(roomId: string, initialState: MatchState) {
             .subscribe((status) => {
               if (!cancelled) {
                 setConnected(status === "SUBSCRIBED");
+                if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+                  log.warn("realtime status", status, roomId);
+                }
               }
             });
           return;
@@ -58,14 +64,24 @@ export function useRoomState(roomId: string, initialState: MatchState) {
       // Memory / fallback: poll
       setConnected(true);
       pollTimer = setInterval(async () => {
-        const res = await getRoomState(roomId);
-        if (cancelled) return;
-        if (!res.ok) {
-          setError(res.error);
-          return;
+        try {
+          const res = await getRoomState(roomId);
+          if (cancelled) return;
+          if (!res.ok) {
+            setError(res.error);
+            log.warn("poll failed", res.error);
+            return;
+          }
+          setError(null);
+          applyRemote(res.data.state);
+        } catch (e) {
+          if (!cancelled) {
+            log.error("poll crashed", e);
+            setError(
+              e instanceof Error ? e.message : "Polling fehlgeschlagen",
+            );
+          }
         }
-        setError(null);
-        applyRemote(res.data.state);
       }, 400);
     }
 
