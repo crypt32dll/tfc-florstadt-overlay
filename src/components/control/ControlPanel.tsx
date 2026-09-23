@@ -26,7 +26,8 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [now, setNow] = useState(() => Date.now());
+  const [timerMounted, setTimerMounted] = useState(false);
+  const [now, setNow] = useState(0);
   const pinSubmitting = useRef(false);
 
   useEffect(() => {
@@ -36,10 +37,20 @@ export function ControlPanel({ roomId, initialState }: Props) {
   }, [roomId]);
 
   useEffect(() => {
-    if (!state.timer.running) return;
+    setTimerMounted(true);
+    setNow(Date.now());
+  }, []);
+
+  useEffect(() => {
+    if (!timerMounted || !state.timer.running) return;
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
-  }, [state.timer.running]);
+  }, [timerMounted, state.timer.running, state.timer.startedAt, state.timer.elapsedMs]);
+
+  const displayedElapsed =
+    !timerMounted || !state.timer.running
+      ? state.timer.elapsedMs
+      : getElapsedMs(state, now);
 
   const run = (mutation: Parameters<typeof mutateRoom>[1]) => {
     startTransition(async () => {
@@ -194,7 +205,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
           />
         </div>
         <div className="mt-1 text-center font-[family-name:var(--font-teko)] text-2xl text-[var(--brand-accent)] tabular-nums">
-          {formatTimer(getElapsedMs(state, now))}
+          {formatTimer(displayedElapsed)}
         </div>
       </div>
 

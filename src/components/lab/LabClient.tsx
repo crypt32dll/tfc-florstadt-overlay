@@ -11,14 +11,12 @@ type Props = {
   roomId: string;
   initialState: MatchState;
   pinHint?: string | null;
-  storeMode: "memory" | "supabase";
 };
 
 export function LabClient({
   roomId,
   initialState,
   pinHint,
-  storeMode,
 }: Props) {
   const [meta, setMeta] = useState(initialState);
   const [connected, setConnected] = useState(true);
@@ -118,12 +116,8 @@ export function LabClient({
             </dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-white/50">Realtime</dt>
+            <dt className="text-white/50">Status</dt>
             <dd>{connected ? "verbunden" : "…"}</dd>
-          </div>
-          <div className="flex justify-between gap-2">
-            <dt className="text-white/50">Store</dt>
-            <dd>{storeMode}</dd>
           </div>
           {pinHint && (
             <div className="flex justify-between gap-2">
@@ -134,13 +128,6 @@ export function LabClient({
         </dl>
 
         {error && <p className="text-sm text-red-400">{error}</p>}
-
-        {storeMode === "memory" && (
-          <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-100">
-            Dev-Modus (Memory). Für Handy-Test im gleichen WLAN die Dev-URL mit
-            der Laptop-IP nutzen (nicht localhost). Produktion: Supabase.
-          </p>
-        )}
 
         <div className="flex gap-2">
           <button

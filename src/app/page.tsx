@@ -18,19 +18,6 @@ export default function HomePage() {
             <li>Tore tippen &amp; Screens wechseln testen</li>
             <li>Für den Stream: Overlay-URL in OBS Browser Source (1920×1080)</li>
           </ol>
-          <p className="rounded-sm border border-amber-600/30 bg-amber-50 p-3 text-amber-950">
-            <strong>Supabase Free:</strong> Projekte pausieren nach ~7 Tagen
-            Inaktivität. Vor Spieltagen im{" "}
-            <a
-              className="text-[var(--brand-accent)] underline"
-              href="https://supabase.com/dashboard"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Dashboard
-            </a>{" "}
-            ggf. „Restore/Resume“ und 1–2 Minuten warten.
-          </p>
         </section>
       </div>
     </main>

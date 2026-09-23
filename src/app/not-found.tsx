@@ -7,8 +7,7 @@ export default function NotFound() {
         Raum nicht gefunden
       </h1>
       <p className="text-sm text-black/70">
-        Der Raum existiert nicht (mehr) oder der Server wurde neu gestartet
-        (Memory-Store).
+        Der Raum existiert nicht (mehr) oder ist abgelaufen.
       </p>
       <Link
         href="/"

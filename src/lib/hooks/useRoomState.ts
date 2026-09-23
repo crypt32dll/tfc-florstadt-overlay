@@ -15,7 +15,7 @@ export function useRoomState(roomId: string, initialState: MatchState) {
   const revisionRef = useRef(initialState.revision);
 
   const applyRemote = useCallback((next: MatchState) => {
-    if (next.revision < revisionRef.current) return;
+    if (next.revision <= revisionRef.current) return;
     revisionRef.current = next.revision;
     setState(next);
   }, []);

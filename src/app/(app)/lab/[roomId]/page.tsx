@@ -15,7 +15,6 @@ export default async function LabPage({
     <LabPageClient
       roomId={roomId}
       initialState={res.data.state}
-      storeMode={res.data.storeMode}
     />
   );
 }

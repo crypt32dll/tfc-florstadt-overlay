@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { createRoom, getStoreInfo } from "@/app/actions/rooms";
+import { useState, useTransition } from "react";
+import { createRoom } from "@/app/actions/rooms";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 
 export function CreateRoomForm() {
@@ -15,14 +15,7 @@ export function CreateRoomForm() {
     roomId: string;
     pin: string;
   } | null>(null);
-  const [storeMode, setStoreMode] = useState<"memory" | "supabase" | null>(
-    null,
-  );
   const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    void getStoreInfo().then((info) => setStoreMode(info.mode));
-  }, []);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +30,6 @@ export function CreateRoomForm() {
         return;
       }
       setCreated({ roomId: res.data.roomId, pin: res.data.pin });
-      setStoreMode(res.data.storeMode);
       sessionStorage.setItem(`tfc-pin-${res.data.roomId}`, res.data.pin);
     });
   };
@@ -58,7 +50,6 @@ export function CreateRoomForm() {
           <div>
             PIN: <strong className="tracking-[0.3em]">{created.pin}</strong>
           </div>
-          <div className="text-sm">Store: {storeMode}</div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <button
@@ -127,15 +118,6 @@ export function CreateRoomForm() {
           className="mt-1 w-full border-2 border-black px-3 py-2 outline-none focus:border-[var(--brand-accent)]"
         />
       </label>
-
-      {storeMode && (
-        <p className="text-xs text-black/50">
-          Aktueller Store: <strong>{storeMode}</strong>
-          {storeMode === "memory"
-            ? " (lokal, ohne Supabase — ideal zum ersten Test)"
-            : " (Supabase)"}
-        </p>
-      )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

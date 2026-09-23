@@ -16,6 +16,8 @@ type Props = {
 export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const doneRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -70,37 +72,52 @@ export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / durationMs);
 
-      // Wind-up 0–0.2, snap 0.2–0.4, follow-through 0.4–0.7, fade 0.7–1
+      // Wind-up (foot back) → snap forward toward camera → spin under rod
+      // +rot.x sends foot to -Z (away); -rot.x kicks toward camera (+Z)
       let rot = 0;
-      if (t < 0.2) {
-        rot = -0.9 * easeOutCubic(t / 0.2);
-      } else if (t < 0.4) {
-        const u = (t - 0.2) / 0.2;
-        rot = -0.9 + 2.2 * easeInCubic(u);
-      } else if (t < 0.7) {
-        const u = (t - 0.4) / 0.3;
-        rot = 1.3 - 0.35 * Math.sin(u * Math.PI) * (1 - u);
+      if (t < 0.18) {
+        rot = 0.9 * easeOutCubic(t / 0.18);
+      } else if (t < 0.36) {
+        const u = (t - 0.18) / 0.18;
+        rot = 0.9 - 2.3 * easeInCubic(u);
+      } else if (t < 0.55) {
+        const u = (t - 0.36) / 0.19;
+        rot = -1.4 - 0.12 * Math.sin(u * Math.PI);
       } else {
-        rot = 1.05;
+        const u = easeInCubic((t - 0.55) / 0.45);
+        rot = -1.45 - u * (Math.PI * 1.1);
       }
       figure.rotation.x = rot;
 
-      // Ball flight after contact (~0.35)
-      if (t < 0.35) {
-        ball.position.set(0.05, -0.85 + Math.sin(rot) * 0.15, 0.45);
-        ball.visible = true;
-      } else {
-        const u = (t - 0.35) / 0.65;
+      // Ball rides the foot, then flies toward camera after contact (~0.32)
+      if (t < 0.32) {
         ball.position.set(
-          0.2 + u * 1.2,
-          -0.4 + u * 1.8 - u * u * 1.2,
-          0.5 + u * 3.5,
+          0.05,
+          -0.85 + Math.sin(-rot) * 0.12,
+          0.45 + Math.sin(-rot) * 0.08,
         );
-        ball.scale.setScalar(1 + u * 4);
+        ball.visible = true;
+        ball.scale.setScalar(1);
+      } else {
+        const u = Math.min(1, (t - 0.32) / 0.55);
+        ball.position.set(
+          0.15 + u * 0.4,
+          -0.35 + u * 1.6 - u * u * 1.1,
+          0.55 + u * 4.5,
+        );
+        ball.scale.setScalar(1 + u * 5);
+        ball.visible = u < 0.92;
       }
 
-      // Fade canvas opacity via CSS variable on parent
-      canvas.style.opacity = t > 0.75 ? String(1 - (t - 0.75) / 0.25) : "1";
+      // Figure fades as it spins away; canvas clears at the end
+      if (t < 0.58) {
+        figure.visible = true;
+        canvas.style.opacity = "1";
+      } else {
+        const fade = 1 - (t - 0.58) / 0.42;
+        figure.visible = fade > 0.05;
+        canvas.style.opacity = String(Math.max(0, fade));
+      }
 
       renderer.render(scene, camera);
 
@@ -108,7 +125,7 @@ export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
         raf = requestAnimationFrame(tick);
       } else if (!doneRef.current) {
         doneRef.current = true;
-        onComplete();
+        void onCompleteRef.current();
       }
     };
 
@@ -121,7 +138,9 @@ export function KickerTransition({ onComplete, durationMs = 1600 }: Props) {
       disposeObject3D(ball);
       renderer.dispose();
     };
-  }, [onComplete, durationMs]);
+    // Run once per mount; onComplete is read via ref
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [durationMs]);
 
   return (
     <canvas

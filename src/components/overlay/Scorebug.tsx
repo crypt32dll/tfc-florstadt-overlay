@@ -7,12 +7,24 @@ import type { MatchState } from "@/lib/match/types";
 import { useEffect, useState } from "react";
 
 function useLiveElapsed(state: MatchState) {
-  const [now, setNow] = useState(() => Date.now());
+  const [mounted, setMounted] = useState(false);
+  const [now, setNow] = useState(0);
+
   useEffect(() => {
-    if (!state.timer.running) return;
+    setMounted(true);
+    setNow(Date.now());
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !state.timer.running) return;
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
-  }, [state.timer.running]);
+  }, [mounted, state.timer.running, state.timer.startedAt, state.timer.elapsedMs]);
+
+  // SSR + first client paint: frozen elapsed only (avoids Date.now hydration mismatch)
+  if (!mounted || !state.timer.running) {
+    return state.timer.elapsedMs;
+  }
   return getElapsedMs(state, now);
 }
 
@@ -23,7 +35,7 @@ export function Scorebug({ state }: { state: MatchState }) {
   return (
     <motion.div
       layoutId="score-panel"
-      className="pointer-events-none absolute top-12 left-1/2 z-20 w-[min(920px,90%)] -translate-x-1/2"
+      className="pointer-events-none absolute bottom-10 left-1/2 z-20 w-[min(920px,90%)] -translate-x-1/2"
     >
       <div className="overflow-hidden rounded-sm border-2 border-white/90 bg-black/85 text-white shadow-[0_8px_32px_rgba(0,0,0,0.55)] backdrop-blur-sm">
         <div className="flex items-center gap-3 px-4 py-2">

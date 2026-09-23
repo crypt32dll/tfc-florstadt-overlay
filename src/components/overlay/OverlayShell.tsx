@@ -70,7 +70,10 @@ export function OverlayShell({
       </AnimatePresence>
 
       {state.activeView === "transition" && (
-        <KickerTransition onComplete={() => void onTransitionComplete()} />
+        <KickerTransition
+          key={`kick-${state.revision}-${state.transitionTo}`}
+          onComplete={onTransitionComplete}
+        />
       )}
     </div>
   );

@@ -7,7 +7,6 @@ import type { MatchState } from "@/lib/match/types";
 type Props = {
   roomId: string;
   initialState: MatchState;
-  storeMode: "memory" | "supabase";
 };
 
 export function LabPageClient(props: Props) {
