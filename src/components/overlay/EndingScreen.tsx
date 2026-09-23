@@ -29,17 +29,26 @@ export function EndingScreen({ state }: { state: MatchState }) {
       <p className="mt-4 max-w-xl text-center font-[family-name:var(--font-open-sans)] text-lg font-light text-white/85">
         Follow für die nächsten Matches aus der Wetterau.
       </p>
-      <div className="overlay-glass overlay-glass-accent mt-10 w-full max-w-2xl px-8 py-5 text-center">
-        <div className="text-xs tracking-[0.22em] text-[var(--brand-accent)] uppercase">
+      <div className="overlay-glass overlay-glass-accent mt-10 w-full max-w-3xl px-6 py-5 md:px-8">
+        <div className="text-center text-xs tracking-[0.22em] text-[var(--brand-accent)] uppercase">
           Endstand Session
         </div>
-        <div className="overlay-score mt-2 text-5xl md:text-6xl">
-          {state.sessionWins.a}
-          <span className="mx-2 text-[var(--brand-accent)]">:</span>
-          {state.sessionWins.b}
-        </div>
-        <div className="mt-2 text-sm text-white/70">
-          {state.teamA.name} · {state.teamB.name}
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:gap-5">
+          <div className="overlay-score truncate text-right text-3xl leading-none md:text-4xl">
+            {state.teamA.name}
+          </div>
+          <div className="overlay-score flex items-center justify-center gap-2 text-5xl leading-none tabular-nums md:text-6xl">
+            <span className="inline-block w-[1.05em] text-center">
+              {state.sessionWins.a}
+            </span>
+            <span className="text-[0.62em] text-[var(--brand-accent)]">:</span>
+            <span className="inline-block w-[1.05em] text-center">
+              {state.sessionWins.b}
+            </span>
+          </div>
+          <div className="overlay-score truncate text-left text-3xl leading-none md:text-4xl">
+            {state.teamB.name}
+          </div>
         </div>
       </div>
       <p className="mt-8 text-sm tracking-[0.28em] text-white/55 uppercase">
