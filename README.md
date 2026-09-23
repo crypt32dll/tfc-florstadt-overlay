@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TFC Florstadt Stream Overlay
 
-## Getting Started
+Twitch/OBS Scoreboard for [Tischfußball Club Florstadt](https://www.tfc-florstadt.de/).
 
-First, run the development server:
+- **Preview Lab** – test without Twitch or OBS
+- **Control** – mobile web app (PIN) for goals, timer, screens
+- **Overlay** – transparent 1920×1080 browser source for OBS
+
+## Stack
+
+- Next.js 16 + TypeScript + Tailwind
+- Free tier: Vercel Hobby + optional Supabase Free
+- Without Supabase env vars → in-memory store (local laptop testing)
+
+## Quick start (local, no Supabase)
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000), create a room, open **Preview Lab**, use Control in another tab (or phone – see note below).
+
+### Phone + Memory store
+
+The phone must reach your laptop. Use the LAN IP, e.g. `http://192.168.x.x:3000`, not `localhost` on the phone. Both Lab and Control must use that same host so they share the memory store.
+
+## Supabase (production / Realtime)
+
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Run SQL from [`supabase/migrations/001_rooms.sql`](supabase/migrations/001_rooms.sql)
+3. Set env vars (see `.env.example`) on Vercel / `.env.local`
+4. Set a strong `ROOM_SESSION_SECRET` (≥ 32 characters)
+
+### Wake up before match day
+
+Supabase **Free** projects pause after ~7 days of inactivity. Before streaming:
+
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard)
+2. If the project shows **Paused** → **Restore / Resume**
+3. Wait 1–2 minutes, reload Lab/Control/Overlay
+
+## OBS Studio
+
+1. Source → **Browser**
+2. URL: `https://YOUR_DOMAIN/overlay/ROOM_ID`
+3. Width **1920**, Height **1080**
+4. Uncheck “Shutdown source when not visible”
+5. Custom CSS (recommended):
+
+```css
+body { background-color: rgba(0,0,0,0) !important; margin: 0 !important; overflow: hidden !important; }
+```
+
+## Security
+
+- Overlay/Lab: public read
+- Control: PIN required (hashed at rest), httpOnly session cookie
+- Mutations only via Server Actions with session check
+- Do not show the PIN on stream
+
+## Routes
+
+| Path | Purpose |
+|------|---------|
+| `/` | Create room |
+| `/lab/[roomId]` | Preview without Twitch |
+| `/control/[roomId]` | Mobile control (PIN) |
+| `/overlay/[roomId]` | OBS browser source |
+
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run start
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# tfc-florstadt-overlay
