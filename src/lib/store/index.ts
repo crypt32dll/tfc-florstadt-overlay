@@ -5,6 +5,8 @@ export type RoomStore = {
   get(roomId: string): Promise<RoomRecord | null>;
   save(room: RoomRecord): Promise<void>;
   deleteOlderThan(olderThanMs: number): Promise<number>;
+  /** Lightweight read used by keep-alive cron to touch Supabase / count rooms. */
+  countRooms(): Promise<number>;
   mode: "memory" | "supabase";
 };
 
@@ -43,6 +45,9 @@ export const memoryStore: RoomStore = {
       }
     }
     return n;
+  },
+  async countRooms() {
+    return getGlobal().rooms.size;
   },
 };
 

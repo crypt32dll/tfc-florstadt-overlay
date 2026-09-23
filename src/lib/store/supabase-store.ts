@@ -90,4 +90,15 @@ export const supabaseStore: RoomStore = {
     }
     return data?.length ?? 0;
   },
+  async countRooms() {
+    const sb = getAdmin();
+    const { error, count } = await sb
+      .from("rooms")
+      .select("id", { count: "exact", head: true });
+    if (error) {
+      log.error("countRooms failed", error);
+      throw error;
+    }
+    return count ?? 0;
+  },
 };
