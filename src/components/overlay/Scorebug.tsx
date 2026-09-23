@@ -44,12 +44,11 @@ export function Scorebug({ state: raw }: { state: MatchState }) {
 
   return (
     <motion.div
-      layoutId="score-panel"
       className="pointer-events-none absolute bottom-10 left-1/2 z-20 w-[min(980px,92%)] -translate-x-1/2"
       initial={reduceMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={reduceMotion ? undefined : { opacity: 0, y: 10 }}
-      transition={{ duration: reduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-1.5 text-[0.65rem] tracking-[0.16em] text-white/70 uppercase md:px-5">

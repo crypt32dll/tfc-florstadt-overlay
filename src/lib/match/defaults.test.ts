@@ -101,6 +101,65 @@ describe("applyMutation", () => {
     expect(s1.sfxVolume).toBe(0.2);
   });
 
+  it("goal from standings switches to live", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = { ...s, activeView: "standings", transitionTo: null };
+    s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
+    expect(s.activeView).toBe("transition");
+    expect(s.transitionTo).toBe("live");
+    expect(s.teamA.score).toBe(1);
+  });
+
+  it("timer start from brb switches to live", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = { ...s, activeView: "brb", transitionTo: null };
+    s = applyMutation(s, { type: "timer", action: "start" });
+    expect(s.activeView).toBe("transition");
+    expect(s.transitionTo).toBe("live");
+    expect(s.timer.running).toBe(true);
+  });
+
+  it("set-winning goal still goes to standings, not live", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = {
+      ...s,
+      activeView: "brb",
+      matchFormat: "bestOf3",
+      sets: { a: 1, b: 0 },
+      teamA: { ...s.teamA, score: 4 },
+      teamB: { ...s.teamB, score: 2 },
+      sessionWins: { a: 1, b: 0 },
+    };
+    s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
+    expect(s.activeView).toBe("transition");
+    expect(s.transitionTo).toBe("standings");
+  });
+
+  it("setView live starts the timer", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = { ...s, activeView: "startingSoon" };
+    s = applyMutation(s, { type: "setView", view: "live" });
+    expect(s.transitionTo).toBe("live");
+    expect(s.timer.running).toBe(true);
+    expect(s.timer.startedAt).not.toBeNull();
+  });
+
+  it("completing a set pauses the timer and keeps elapsed", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = {
+      ...s,
+      activeView: "live",
+      timer: { running: true, startedAt: Date.now() - 5000, elapsedMs: 10_000 },
+      teamA: { ...s.teamA, score: 4 },
+      teamB: { ...s.teamB, score: 2 },
+    };
+    s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
+    expect(s.sets.a).toBe(1);
+    expect(s.timer.running).toBe(false);
+    expect(s.timer.startedAt).toBeNull();
+    expect(s.timer.elapsedMs).toBeGreaterThanOrEqual(14_000);
+  });
+
   it("normalizeState backfills sfx", () => {
     const raw = createInitialState();
     // @ts-expect-error intentional legacy shape

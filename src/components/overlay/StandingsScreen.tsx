@@ -11,12 +11,11 @@ export function StandingsScreen({ state: raw }: { state: MatchState }) {
 
   return (
     <motion.div
-      layoutId="score-panel"
       className="pointer-events-none absolute top-1/2 left-1/2 z-20 w-[min(920px,90%)] -translate-x-1/2 -translate-y-1/2"
       initial={reduceMotion ? false : { opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={reduceMotion ? undefined : { opacity: 0, scale: 0.98 }}
-      transition={{ duration: reduceMotion ? 0 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: reduceMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
         <div className="flex items-center justify-between gap-4 border-b border-white/12 px-5 py-4">

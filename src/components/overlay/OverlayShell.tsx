@@ -2,11 +2,12 @@
 
 import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { completeTransition } from "@/app/actions/rooms";
 import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { MatchState } from "@/lib/match/types";
+import { preloadKickerTexture } from "@/lib/three/createLogoKicker";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
@@ -34,6 +35,10 @@ export function OverlayShell({
   const { state, setState } = useRoomState(roomId, initialState);
   useOverlaySfx(state);
 
+  useEffect(() => {
+    void preloadKickerTexture();
+  }, []);
+
   const onTransitionComplete = useCallback(async () => {
     const res = await completeTransition(roomId);
     if (res.ok) {
@@ -50,7 +55,8 @@ export function OverlayShell({
       }
       style={mode === "overlay" ? { width: 1920, height: 1080 } : undefined}
     >
-      <AnimatePresence mode="wait">
+      {/* sync: target view mounts under kicker without waiting for exit FLIP */}
+      <AnimatePresence mode="sync">
         {(state.activeView === "startingSoon" ||
           (state.activeView === "transition" &&
             state.transitionTo === "startingSoon")) && (

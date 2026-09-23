@@ -9,12 +9,11 @@ export function StartingSoonScreen({ state }: { state: MatchState }) {
 
   return (
     <motion.div
-      layoutId="score-panel"
       className="overlay-soon-bg absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden px-8 py-8 text-white md:px-12 md:py-10"
       initial={reduceMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={reduceMotion ? undefined : { opacity: 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.4 }}
+      transition={{ duration: reduceMotion ? 0 : 0.28 }}
     >
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div

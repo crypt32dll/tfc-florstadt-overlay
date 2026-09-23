@@ -73,11 +73,48 @@ function bump(state: MatchState): MatchState {
   };
 }
 
+/** Switch to live scorebug (with logo sting) unless already live / mid-transition. */
+function goLive(state: MatchState): MatchState {
+  if (state.activeView === "live") return state;
+  if (state.activeView === "transition" && state.transitionTo === "live") {
+    return state;
+  }
+  return {
+    ...state,
+    activeView: "transition",
+    transitionTo: "live",
+  };
+}
+
 function resetGoals(state: MatchState): MatchState {
   return {
     ...state,
     teamA: { ...state.teamA, score: 0 },
     teamB: { ...state.teamB, score: 0 },
+  };
+}
+
+function pauseTimer(state: MatchState): MatchState {
+  if (!state.timer.running) return state;
+  return {
+    ...state,
+    timer: {
+      running: false,
+      startedAt: null,
+      elapsedMs: getElapsedMs(state),
+    },
+  };
+}
+
+function startTimer(state: MatchState): MatchState {
+  if (state.timer.running) return state;
+  return {
+    ...state,
+    timer: {
+      ...state.timer,
+      running: true,
+      startedAt: Date.now(),
+    },
   };
 }
 
@@ -90,11 +127,12 @@ function completeSet(state: MatchState, winner: TeamSide): MatchState {
     a: state.sessionWins.a + (winner === "a" ? 1 : 0),
     b: state.sessionWins.b + (winner === "b" ? 1 : 0),
   };
-  let next: MatchState = {
+  // Pause clock at set end (game end resets via completeGame)
+  let next: MatchState = pauseTimer({
     ...resetGoals(state),
     sets,
     sessionWins,
-  };
+  });
 
   const need = setsToWin(state.matchFormat);
   if (sets[winner] >= need) {
@@ -146,12 +184,19 @@ export function applyMutation(
       const nextScore = Math.max(0, Math.min(7, state[key].score + mutation.delta));
       if (nextScore === state[key].score) return state;
 
-      let next: MatchState = bump({
+      let next: MatchState = {
         ...state,
         [key]: { ...state[key], score: nextScore },
-      });
+      };
 
-      // Only auto-complete set on scoring (not undo)
+      // Scoring from another screen → show live (set/game end may override)
+      if (mutation.delta === 1) {
+        next = goLive(next);
+      }
+
+      next = bump(next);
+
+      // Only auto-complete set on scoring (not undo) — may override to standings
       if (mutation.delta === 1) {
         const a = next.teamA.score;
         const b = next.teamB.score;
@@ -172,14 +217,16 @@ export function applyMutation(
     case "timer": {
       if (mutation.action === "start") {
         if (state.timer.running) return state;
-        return bump({
-          ...state,
-          timer: {
-            ...state.timer,
-            running: true,
-            startedAt: Date.now(),
-          },
-        });
+        return bump(
+          goLive({
+            ...state,
+            timer: {
+              ...state.timer,
+              running: true,
+              startedAt: Date.now(),
+            },
+          }),
+        );
       }
       if (mutation.action === "pause") {
         if (!state.timer.running) return state;
@@ -229,11 +276,16 @@ export function applyMutation(
     case "setView": {
       if (state.activeView === mutation.view) return state;
       if (state.activeView === "transition") return state;
-      return bump({
+      let next: MatchState = {
         ...state,
         activeView: "transition",
         transitionTo: mutation.view,
-      });
+      };
+      // Live = match is on → start the clock
+      if (mutation.view === "live") {
+        next = startTimer(next);
+      }
+      return bump(next);
     }
     case "transitionComplete": {
       if (state.activeView !== "transition" || !state.transitionTo) {

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { clientLog } from "@/lib/logger.client";
 import {
+  collectOpacityMaterials,
   createLogoPlate,
   disposeObject3D,
   loadKickerTexture,
@@ -18,8 +19,7 @@ type Props = {
 
 /**
  * Broadcast logo sting — CL-style impact.
- * Motion tokens (ui-ux-pro-max): ease-out entry, back.out settle,
- * ease-in exit faster than enter, prefers-reduced-motion fade.
+ * Tuned for 1080p OBS: capped DPR, cached texture, no per-frame traversals.
  */
 export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,7 +42,6 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
     let disposables: THREE.Object3D[] = [];
     let removeResize: (() => void) | undefined;
 
-    // Easing (GSAP-equivalent curves)
     const easeOutExpo = (t: number) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
     const easeInExpo = (t: number) => (t <= 0 ? 0 : 2 ** (10 * t - 10));
     const easeOutBack = (t: number, s = 1.55) => {
@@ -64,28 +63,32 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
         }
         return;
       }
-      if (cancelled) {
-        texture.dispose();
-        return;
-      }
+      if (cancelled) return;
 
+      // OBS is typically 1× CSS pixels at 1920×1080 — DPR 2 = 4K fillrate
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: true,
+        antialias: dpr < 1.25,
         premultipliedAlpha: false,
+        powerPreference: "high-performance",
+        stencil: false,
+        depth: false,
       });
       renderer.setClearColor(0x000000, 0);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(dpr);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.setAnimationLoop(null);
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 100);
       camera.position.set(0, 0, 5);
+      let lastFov = 38;
 
-      // Impact flash (wide soft disc)
+      const segs = 32;
       const flash = new THREE.Mesh(
-        new THREE.CircleGeometry(10, 64),
+        new THREE.CircleGeometry(10, segs),
         new THREE.MeshBasicMaterial({
           color: 0xffffff,
           transparent: true,
@@ -96,10 +99,10 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
       flash.position.z = -1.5;
       scene.add(flash);
       disposables.push(flash);
+      const flashMat = flash.material as THREE.MeshBasicMaterial;
 
-      // Large brand glow behind everything
       const glow = new THREE.Mesh(
-        new THREE.CircleGeometry(4.8, 64),
+        new THREE.CircleGeometry(4.8, segs),
         new THREE.MeshBasicMaterial({
           color: 0x0693e3,
           transparent: true,
@@ -110,12 +113,13 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
       glow.position.z = -0.35;
       scene.add(glow);
       disposables.push(glow);
+      const glowMat = glow.material as THREE.MeshBasicMaterial;
 
-      // Expanding rings on impact — scaled for big disc
       const rings: THREE.Mesh[] = [];
+      const ringMats: THREE.MeshBasicMaterial[] = [];
       for (let i = 0; i < 2; i += 1) {
         const ring = new THREE.Mesh(
-          new THREE.RingGeometry(1.4, 1.55, 64),
+          new THREE.RingGeometry(1.4, 1.55, segs),
           new THREE.MeshBasicMaterial({
             color: 0x0693e3,
             transparent: true,
@@ -127,11 +131,17 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
         ring.position.z = -0.08 - i * 0.03;
         scene.add(ring);
         rings.push(ring);
+        ringMats.push(ring.material as THREE.MeshBasicMaterial);
         disposables.push(ring);
       }
 
       logo = createLogoPlate(texture);
       scene.add(logo);
+      const logoMats = collectOpacityMaterials(logo);
+
+      const setLogoOpacity = (opacity: number) => {
+        for (const m of logoMats) m.opacity = opacity;
+      };
 
       const resize = () => {
         if (!renderer) return;
@@ -143,21 +153,13 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
         camera.updateProjectionMatrix();
       };
       resize();
-      window.addEventListener("resize", resize);
+      window.addEventListener("resize", resize, { passive: true });
       removeResize = () => window.removeEventListener("resize", resize);
 
-      // Reduced motion: short centered fade
-      const effectiveDuration = reduceMotion ? Math.min(durationMs, 700) : durationMs;
+      const effectiveDuration = reduceMotion
+        ? Math.min(durationMs, 700)
+        : durationMs;
       const start = performance.now();
-
-      const setLogoOpacity = (opacity: number) => {
-        logo?.traverse((obj) => {
-          if (obj instanceof THREE.Mesh && obj.material) {
-            const m = obj.material as THREE.MeshBasicMaterial;
-            if ("opacity" in m) m.opacity = opacity;
-          }
-        });
-      };
 
       const tick = (now: number) => {
         if (cancelled || !renderer || !logo) return;
@@ -171,11 +173,9 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
           logo.scale.setScalar(0.95 + fadeIn * 0.1);
           logo.rotation.set(0, 0, 0);
           setLogoOpacity(opacity);
-          (glow.material as THREE.MeshBasicMaterial).opacity = opacity * 0.2;
-          canvas.style.opacity = "1";
+          glowMat.opacity = opacity * 0.2;
           renderer.render(scene, camera);
         } else {
-          // Timeline: enter 0–0.38 · impact/hold 0.38–0.58 · exit 0.58–1 (exit faster)
           let x = 0;
           let y = 0;
           let z = 0;
@@ -200,7 +200,6 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             fov = THREE.MathUtils.lerp(48, 36, u);
           } else if (t < 0.58) {
             const u = (t - 0.38) / 0.2;
-            // Impact punch then settle
             const punch = Math.sin(clamp01(u / 0.35) * Math.PI);
             z = 0;
             scale = 1.08 - 0.06 * punch + 0.02 * Math.sin(u * Math.PI * 2);
@@ -211,15 +210,13 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             flashOp = u < 0.4 ? (1 - u / 0.4) * 0.55 : 0;
             fov = 36 + punch * 2.5;
 
-            // Rings expand from impact
-            rings.forEach((ring, i) => {
+            for (let i = 0; i < rings.length; i += 1) {
               const delay = i * 0.12;
               const ru = clamp01((u - delay) / (1 - delay));
-              const mat = ring.material as THREE.MeshBasicMaterial;
-              mat.opacity = (1 - ru) * 0.55;
-              ring.scale.setScalar(1 + ru * (3.4 + i * 1.1));
-              ring.rotation.z = ru * 0.4 * (i % 2 === 0 ? 1 : -1);
-            });
+              ringMats[i].opacity = (1 - ru) * 0.55;
+              rings[i].scale.setScalar(1 + ru * (3.4 + i * 1.1));
+              rings[i].rotation.z = ru * 0.4 * (i % 2 === 0 ? 1 : -1);
+            }
           } else {
             const u = easeInExpo((t - 0.58) / 0.42);
             z = THREE.MathUtils.lerp(0, -11, u);
@@ -231,9 +228,7 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             glowOp = 0.5 * (1 - u);
             flashOp = 0;
             fov = THREE.MathUtils.lerp(36, 44, u);
-            rings.forEach((ring) => {
-              (ring.material as THREE.MeshBasicMaterial).opacity = 0;
-            });
+            for (const mat of ringMats) mat.opacity = 0;
           }
 
           logo.position.set(x, y, z);
@@ -241,18 +236,18 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
           logo.rotation.set(0, rotY, rotZ);
           setLogoOpacity(opacity);
 
-          const glowMat = glow.material as THREE.MeshBasicMaterial;
           glowMat.opacity = glowOp;
           glow.scale.setScalar(scale * (1.05 + glowOp * 0.4));
-          glow.position.copy(logo.position);
-          glow.position.z -= 0.2;
+          glow.position.set(x, y, z - 0.2);
 
-          (flash.material as THREE.MeshBasicMaterial).opacity = flashOp;
+          flashMat.opacity = flashOp;
 
-          camera.fov = fov;
-          camera.updateProjectionMatrix();
+          if (Math.abs(fov - lastFov) > 0.05) {
+            camera.fov = fov;
+            camera.updateProjectionMatrix();
+            lastFov = fov;
+          }
 
-          // Deterministic impact punch (no random jitter)
           if (t >= 0.38 && t < 0.5) {
             const s = 1 - (t - 0.38) / 0.12;
             camera.position.x = Math.sin(t * 90) * 0.035 * s;
@@ -262,7 +257,6 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             camera.position.y = 0;
           }
 
-          canvas.style.opacity = "1";
           renderer.render(scene, camera);
         }
 
@@ -281,8 +275,8 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       removeResize?.();
-      if (logo) disposeObject3D(logo);
-      for (const obj of disposables) disposeObject3D(obj);
+      if (logo) disposeObject3D(logo, false);
+      for (const obj of disposables) disposeObject3D(obj, true);
       renderer?.dispose();
     };
   }, [durationMs]);
@@ -290,7 +284,7 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
   return (
     <canvas
       ref={canvasRef}
-      className="pointer-events-none absolute inset-0 z-40 h-full w-full"
+      className="pointer-events-none absolute inset-0 z-40 h-full w-full [transform:translateZ(0)]"
       aria-hidden
     />
   );
