@@ -1,10 +1,8 @@
 import { CreateRoomForm } from "@/components/brand/CreateRoomForm";
-import { PwaHomeRedirect } from "@/components/pwa/PwaHomeRedirect";
 
 export default function HomePage() {
   return (
     <main className="app-shell flex h-dvh max-h-dvh flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6">
-      <PwaHomeRedirect />
       <div className="mx-auto grid h-full w-full max-w-5xl grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:gap-6">
         <div className="flex min-h-0 items-center justify-center overflow-y-auto">
           <CreateRoomForm />
@@ -20,10 +18,7 @@ export default function HomePage() {
                 <strong className="text-white/90">Preview Lab</strong> auf dem
                 Laptop öffnen
               </li>
-              <li>
-                QR mit dem Handy scannen → Control → PIN; optional PWA / „Zum
-                Homescreen“ von der Control-Seite installieren
-              </li>
+              <li>QR mit dem Handy scannen → Control → PIN</li>
               <li>Tore tippen &amp; Screens wechseln testen</li>
               <li>Overlay-URL in OBS einbinden (siehe unten)</li>
             </ol>

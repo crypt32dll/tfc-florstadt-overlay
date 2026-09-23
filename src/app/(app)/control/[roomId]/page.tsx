@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRoomState } from "@/app/actions/rooms";
 import { ControlPanel } from "@/components/control/ControlPanel";
-import { RememberControlRoom } from "@/components/control/RememberControlRoom";
-import { PwaInstallPrompt } from "@/components/pwa/PwaInstallPrompt";
 
 export default async function ControlPage({
   params,
@@ -13,11 +11,5 @@ export default async function ControlPage({
   const res = await getRoomState(roomId);
   if (!res.ok) notFound();
 
-  return (
-    <>
-      <RememberControlRoom roomId={roomId} />
-      <PwaInstallPrompt />
-      <ControlPanel roomId={roomId} initialState={res.data.state} />
-    </>
-  );
+  return <ControlPanel roomId={roomId} initialState={res.data.state} />;
 }
