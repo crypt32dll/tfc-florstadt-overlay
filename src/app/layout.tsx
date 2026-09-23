@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
-import { Open_Sans, Teko } from "next/font/google";
+import "@fontsource/open-sans/latin-300.css";
+import "@fontsource/open-sans/latin-400.css";
+import "@fontsource/open-sans/latin-600.css";
+import "@fontsource/open-sans/latin-700.css";
+import "@fontsource/teko/latin-400.css";
+import "@fontsource/teko/latin-500.css";
+import "@fontsource/teko/latin-600.css";
+import "@fontsource/teko/latin-700.css";
 import "./globals.css";
-
-const openSans = Open_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "600", "700"],
-  variable: "--font-open-sans",
-  display: "swap",
-});
-
-const teko = Teko({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-teko",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "TFC Florstadt Stream Overlay",
@@ -59,10 +52,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="de"
-      className={`${openSans.variable} ${teko.variable} h-full antialiased`}
-    >
+    <html lang="de" className="h-full antialiased">
       <body className="min-h-full">{children}</body>
     </html>
   );

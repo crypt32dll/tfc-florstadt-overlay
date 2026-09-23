@@ -8,6 +8,9 @@
   --brand-black: #0a0a0a;
   --brand-ink: #f4f7fb;
 
+  --font-open-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-teko: "Teko", ui-sans-serif, system-ui, sans-serif;
+
   --background: #070b12;
   --foreground: #f4f7fb;
   --muted: rgba(244, 247, 251, 0.62);

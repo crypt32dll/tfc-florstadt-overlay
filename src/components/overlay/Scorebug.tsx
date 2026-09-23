@@ -11,7 +11,8 @@ import {
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
 
-function useLiveElapsed(state: MatchState) {
+/** Isolates the 250ms tick so Scorebug shell doesn't re-render at 4Hz (rerender-memo). */
+function LiveTimerDigits({ state }: { state: MatchState }) {
   const running = state.timer.running;
   const now = useSyncExternalStore(
     (onStoreChange) => {
@@ -23,15 +24,18 @@ function useLiveElapsed(state: MatchState) {
     () => 0,
   );
 
-  if (!running || now === 0) {
-    return state.timer.elapsedMs;
-  }
-  return getElapsedMs(state, now);
+  const elapsed =
+    !running || now === 0 ? state.timer.elapsedMs : getElapsedMs(state, now);
+
+  return (
+    <div className="overlay-score mt-0.5 text-2xl leading-none text-[var(--brand-accent)] tabular-nums md:text-3xl">
+      {formatTimer(elapsed)}
+    </div>
+  );
 }
 
 export function Scorebug({ state: raw }: { state: MatchState }) {
   const state = normalizeState(raw);
-  const elapsed = useLiveElapsed(state);
   const pulseKey = `${state.teamA.score}-${state.teamB.score}-${state.sets.a}-${state.sets.b}`;
   const reduceMotion = useReducedMotion();
   const need = setsToWin(state.matchFormat);
@@ -104,9 +108,7 @@ export function Scorebug({ state: raw }: { state: MatchState }) {
             <div className="text-[0.65rem] leading-none tracking-[0.18em] text-white/55 uppercase">
               Zeit
             </div>
-            <div className="overlay-score mt-0.5 text-2xl leading-none text-[var(--brand-accent)] tabular-nums md:text-3xl">
-              {formatTimer(elapsed)}
-            </div>
+            <LiveTimerDigits state={state} />
           </div>
         </div>
         {state.timer.running && (

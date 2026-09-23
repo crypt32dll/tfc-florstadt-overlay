@@ -29,6 +29,26 @@ function subscribeNow(onStoreChange: () => void, running: boolean) {
   return () => window.clearInterval(id);
 }
 
+/** Isolates the 250ms tick so ControlPanel doesn't re-render at 4Hz (rerender-memo). */
+function LiveTimerDisplay({ state }: { state: MatchState }) {
+  const timerRunning = state.timer.running;
+  const now = useSyncExternalStore(
+    (onStoreChange) => subscribeNow(onStoreChange, timerRunning),
+    () => Date.now(),
+    () => 0,
+  );
+  const displayedElapsed =
+    !state.timer.running || now === 0
+      ? state.timer.elapsedMs
+      : getElapsedMs(state, now);
+
+  return (
+    <div className="mt-1 text-center font-display text-2xl text-[var(--brand-accent)] tabular-nums">
+      {formatTimer(displayedElapsed)}
+    </div>
+  );
+}
+
 type Props = {
   roomId: string;
   initialState: MatchState;
@@ -45,12 +65,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const [toast, setToast] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pending, startTransition] = useTransition();
-  const timerRunning = state.timer.running;
-  const now = useSyncExternalStore(
-    (onStoreChange) => subscribeNow(onStoreChange, timerRunning),
-    () => Date.now(),
-    () => 0,
-  );
   const [startingDraft, setStartingDraft] = useSyncedState(
     state.startingMessage ?? "",
   );
@@ -79,11 +93,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
     const id = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(id);
   }, [toast]);
-
-  const displayedElapsed =
-    !state.timer.running || now === 0
-      ? state.timer.elapsedMs
-      : getElapsedMs(state, now);
 
   const showToast = (msg: string) => setToast(msg);
 
@@ -301,9 +310,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
             align="left"
           />
         </div>
-        <div className="mt-1 text-center font-display text-2xl text-[var(--brand-accent)] tabular-nums">
-          {formatTimer(displayedElapsed)}
-        </div>
+        <LiveTimerDisplay state={state} />
       </div>
 
       <div className="grid grid-cols-2 gap-2">

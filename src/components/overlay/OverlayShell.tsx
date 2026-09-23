@@ -9,7 +9,6 @@ import { useRoomState } from "@/lib/hooks/useRoomState";
 import { clientLog } from "@/lib/logger.client";
 import { applyMutation, normalizeState } from "@/lib/match/defaults";
 import type { MatchState } from "@/lib/match/types";
-import { preloadKickerTexture } from "@/lib/three/createLogoKicker";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
@@ -54,7 +53,11 @@ export function OverlayShell({
   }, [state]);
 
   useEffect(() => {
-    void preloadKickerTexture();
+    // Dynamic import keeps three.js out of the initial overlay chunk
+    // (bundle-dynamic-imports / bundle-conditional).
+    void import("@/lib/three/createLogoKicker").then((m) =>
+      m.preloadKickerTexture(),
+    );
   }, []);
 
   useEffect(() => {

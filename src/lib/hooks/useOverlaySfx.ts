@@ -117,46 +117,67 @@ export function useOverlaySfx(state: MatchState) {
   } | null>(null);
   const lastGoalAt = useRef(0);
 
+  const revision = state.revision;
+  const scoreA = state.teamA.score;
+  const scoreB = state.teamB.score;
+  const setsA = state.sets.a;
+  const setsB = state.sets.b;
+  const activeView = state.activeView;
+  const sfxPing = state.sfxPing ?? 0;
+  const sfxEnabled = state.sfxEnabled;
+  const sfxVolume = state.sfxVolume;
+
   useEffect(() => {
     const prev = prevRef.current;
     prevRef.current = {
-      revision: state.revision,
-      goals: state.teamA.score + state.teamB.score,
-      sets: state.sets.a + state.sets.b,
-      view: state.activeView,
-      sfxPing: state.sfxPing ?? 0,
+      revision,
+      goals: scoreA + scoreB,
+      sets: setsA + setsB,
+      view: activeView,
+      sfxPing,
     };
     if (!prev) return;
     if (reduceMotion) return;
-    if (state.revision <= prev.revision) return;
+    if (revision <= prev.revision) return;
 
     try {
       // Explicit test ping from Control (always plays when ping bumps)
-      if ((state.sfxPing ?? 0) > prev.sfxPing) {
-        playSfx(ensureAudioContext(ctxRef), "switch", state.sfxVolume || 0.7);
+      if (sfxPing > prev.sfxPing) {
+        playSfx(ensureAudioContext(ctxRef), "switch", sfxVolume || 0.7);
         return;
       }
 
-      if (!state.sfxEnabled) return;
+      if (!sfxEnabled) return;
 
-      const goals = state.teamA.score + state.teamB.score;
-      const sets = state.sets.a + state.sets.b;
+      const goals = scoreA + scoreB;
+      const sets = setsA + setsB;
       const now = Date.now();
 
       if (sets > prev.sets) {
-        playSfx(ensureAudioContext(ctxRef), "set", state.sfxVolume);
+        playSfx(ensureAudioContext(ctxRef), "set", sfxVolume);
         return;
       }
       if (goals > prev.goals && now - lastGoalAt.current > 180) {
         lastGoalAt.current = now;
-        playSfx(ensureAudioContext(ctxRef), "goal", state.sfxVolume);
+        playSfx(ensureAudioContext(ctxRef), "goal", sfxVolume);
         return;
       }
-      if (state.activeView === "transition" && prev.view !== "transition") {
-        playSfx(ensureAudioContext(ctxRef), "switch", state.sfxVolume);
+      if (activeView === "transition" && prev.view !== "transition") {
+        playSfx(ensureAudioContext(ctxRef), "switch", sfxVolume);
       }
     } catch {
       // Audio may be blocked until OBS enables source audio
     }
-  }, [state, reduceMotion]);
+  }, [
+    revision,
+    scoreA,
+    scoreB,
+    setsA,
+    setsB,
+    activeView,
+    sfxPing,
+    sfxEnabled,
+    sfxVolume,
+    reduceMotion,
+  ]);
 }

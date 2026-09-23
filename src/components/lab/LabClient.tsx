@@ -1,6 +1,5 @@
 "use client";
 
-import QRCode from "qrcode";
 import {
   useCallback,
   useEffect,
@@ -50,11 +49,19 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
 
   useEffect(() => {
     if (!controlUrl) return;
-    void QRCode.toDataURL(controlUrl, {
-      margin: 1,
-      width: 220,
-      color: { dark: "#111111", light: "#ffffff" },
-    }).then(setQr);
+    let cancelled = false;
+    void import("qrcode").then((QRCode) =>
+      QRCode.toDataURL(controlUrl, {
+        margin: 1,
+        width: 220,
+        color: { dark: "#111111", light: "#ffffff" },
+      }).then((url) => {
+        if (!cancelled) setQr(url);
+      }),
+    );
+    return () => {
+      cancelled = true;
+    };
   }, [controlUrl]);
 
   const copyOverlayUrl = async () => {
