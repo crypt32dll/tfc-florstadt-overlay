@@ -30,6 +30,30 @@ export function useRoomState(roomId: string, initialState: MatchState) {
       NonNullable<ReturnType<typeof createBrowserSupabase>>["channel"]
     > | null = null;
 
+    async function pollOnce() {
+      try {
+        const res = await getRoomState(roomId);
+        if (cancelled) return;
+        if (!res.ok) {
+          setError(res.error);
+          setConnected(false);
+          log.warn("poll failed", res.error);
+          return;
+        }
+        setError(null);
+        setConnected(true);
+        applyRemote(res.data.state);
+      } catch (e) {
+        if (!cancelled) {
+          log.error("poll crashed", e);
+          setConnected(false);
+          setError(
+            e instanceof Error ? e.message : "Polling fehlgeschlagen",
+          );
+        }
+      }
+    }
+
     async function boot() {
       if (isSupabaseBrowserEnabled()) {
         const sb = createBrowserSupabase();
@@ -46,14 +70,32 @@ export function useRoomState(roomId: string, initialState: MatchState) {
               },
               (payload) => {
                 const row = payload.new as { state?: MatchState } | null;
-                if (row?.state) applyRemote(row.state);
+                if (row?.state) {
+                  setConnected(true);
+                  setError(null);
+                  applyRemote(row.state);
+                }
               },
             )
             .subscribe((status) => {
-              if (!cancelled) {
-                setConnected(status === "SUBSCRIBED");
-                if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-                  log.warn("realtime status", status, roomId);
+              if (cancelled) return;
+              if (status === "SUBSCRIBED") {
+                setConnected(true);
+                setError(null);
+                return;
+              }
+              if (
+                status === "CHANNEL_ERROR" ||
+                status === "TIMED_OUT" ||
+                status === "CLOSED"
+              ) {
+                setConnected(false);
+                log.warn("realtime status", status, roomId);
+                // Fallback poll while realtime is down
+                if (!pollTimer) {
+                  pollTimer = setInterval(() => {
+                    void pollOnce();
+                  }, 1500);
                 }
               }
             });
@@ -61,27 +103,9 @@ export function useRoomState(roomId: string, initialState: MatchState) {
         }
       }
 
-      // Memory / fallback: poll
       setConnected(true);
-      pollTimer = setInterval(async () => {
-        try {
-          const res = await getRoomState(roomId);
-          if (cancelled) return;
-          if (!res.ok) {
-            setError(res.error);
-            log.warn("poll failed", res.error);
-            return;
-          }
-          setError(null);
-          applyRemote(res.data.state);
-        } catch (e) {
-          if (!cancelled) {
-            log.error("poll crashed", e);
-            setError(
-              e instanceof Error ? e.message : "Polling fehlgeschlagen",
-            );
-          }
-        }
+      pollTimer = setInterval(() => {
+        void pollOnce();
       }, 400);
     }
 

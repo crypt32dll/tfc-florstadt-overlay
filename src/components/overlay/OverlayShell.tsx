@@ -4,8 +4,11 @@ import dynamic from "next/dynamic";
 import { AnimatePresence } from "framer-motion";
 import { useCallback } from "react";
 import { completeTransition } from "@/app/actions/rooms";
+import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { MatchState } from "@/lib/match/types";
+import { BrbScreen } from "./BrbScreen";
+import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
 import { StartingSoonScreen } from "./StartingSoonScreen";
 import { StandingsScreen } from "./StandingsScreen";
@@ -29,6 +32,7 @@ export function OverlayShell({
   mode = "overlay",
 }: Props) {
   const { state, setState } = useRoomState(roomId, initialState);
+  useOverlaySfx(state);
 
   const onTransitionComplete = useCallback(async () => {
     const res = await completeTransition(roomId);
@@ -61,6 +65,16 @@ export function OverlayShell({
           (state.activeView === "transition" &&
             state.transitionTo === "standings")) && (
           <StandingsScreen key="standings" state={state} />
+        )}
+        {(state.activeView === "brb" ||
+          (state.activeView === "transition" &&
+            state.transitionTo === "brb")) && (
+          <BrbScreen key="brb" state={state} />
+        )}
+        {(state.activeView === "ending" ||
+          (state.activeView === "transition" &&
+            state.transitionTo === "ending")) && (
+          <EndingScreen key="ending" state={state} />
         )}
       </AnimatePresence>
 

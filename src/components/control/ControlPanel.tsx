@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { formatTimer, getElapsedMs } from "@/lib/match/defaults";
+import { GAME_LINEUP } from "@/lib/match/rules";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import { clientLog } from "@/lib/logger.client";
 import type { ActiveView, MatchState } from "@/lib/match/types";
@@ -27,10 +28,14 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pending, startTransition] = useTransition();
   const [timerMounted, setTimerMounted] = useState(false);
   const [now, setNow] = useState(0);
+  const [startingDraft, setStartingDraft] = useState(
+    initialState.startingMessage ?? "",
+  );
   const pinSubmitting = useRef(false);
 
   useEffect(() => {
@@ -38,6 +43,10 @@ export function ControlPanel({ roomId, initialState }: Props) {
       if (res.ok) setAuthorized(res.data.authorized);
     });
   }, [roomId]);
+
+  useEffect(() => {
+    setStartingDraft(state.startingMessage ?? "");
+  }, [state.startingMessage]);
 
   useEffect(() => {
     setTimerMounted(true);
@@ -55,22 +64,36 @@ export function ControlPanel({ roomId, initialState }: Props) {
     state.timer.elapsedMs,
   ]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(id);
+  }, [toast]);
+
   const displayedElapsed =
     !timerMounted || !state.timer.running
       ? state.timer.elapsedMs
       : getElapsedMs(state, now);
 
+  const showToast = (msg: string) => setToast(msg);
+
   const run = (mutation: Parameters<typeof mutateRoom>[1]) => {
     startTransition(async () => {
       try {
-        const res = await mutateRoom(roomId, mutation);
+        const res = await mutateRoom(roomId, mutation, {
+          expectedRevision: state.revision,
+        });
         if (!res.ok) {
           if (res.error === "UNAUTHORIZED") {
             setAuthorized(false);
             setAuthError("Session abgelaufen – bitte PIN erneut eingeben.");
             log.warn("session expired", roomId);
+          } else if (res.error === "CONFLICT") {
+            showToast("Zustand aktualisiert – bitte erneut tippen.");
+            log.warn("revision conflict", roomId);
           } else {
             setAuthError(res.error);
+            showToast(res.error);
             log.warn("mutation rejected", res.error);
           }
           return;
@@ -79,13 +102,19 @@ export function ControlPanel({ roomId, initialState }: Props) {
         setState(res.data.state);
       } catch (err) {
         log.error("mutation network error", err);
-        setAuthError(
+        const msg =
           err instanceof Error
             ? err.message
-            : "Netzwerkfehler – bitte erneut versuchen.",
-        );
+            : "Netzwerkfehler – bitte erneut versuchen.";
+        setAuthError(msg);
+        showToast(msg);
       }
     });
+  };
+
+  const confirmRun = (message: string, mutation: Parameters<typeof mutateRoom>[1]) => {
+    if (typeof window !== "undefined" && !window.confirm(message)) return;
+    run(mutation);
   };
 
   const onPinSubmit = async (e?: React.FormEvent) => {
@@ -191,20 +220,38 @@ export function ControlPanel({ roomId, initialState }: Props) {
 
   return (
     <div className="app-shell mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-        <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <BrandMark size={48} />
         <div className="text-right text-xs">
-          <div className={connected ? "badge-live" : "text-muted"}>
-            {connected ? "Live" : "Verbinde…"}
+          <div className={connected ? "badge-live" : "text-amber-300"}>
+            {connected ? "Live" : "Keine Verbindung…"}
           </div>
           <div className="mt-1 font-mono text-muted">{roomId}</div>
         </div>
       </div>
 
+      {!connected && (
+        <p
+          role="status"
+          className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
+        >
+          Verbindung unterbrochen – Änderungen ggf. verzögert. WLAN prüfen.
+        </p>
+      )}
+
+      {(toast || error || authError) && (
+        <p
+          role="alert"
+          className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200"
+        >
+          {toast ?? error ?? authError}
+        </p>
+      )}
+
       <div className="glass-panel-strong px-4 py-4">
         <div className="mb-2 flex items-center justify-between gap-2 text-xs tracking-wide text-muted uppercase">
           <span>
-            Spiel {(state.lineupIndex ?? 0) + 1}/10 ·{" "}
+            Spiel {(state.lineupIndex ?? 0) + 1}/{GAME_LINEUP.length} ·{" "}
             {(state.gameType ?? "doppel") === "doppel" ? "Doppel" : "Einzel"}
           </span>
           <span className="text-[var(--brand-accent)]">
@@ -225,9 +272,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
               {state.teamA.score}
               <span className="text-[var(--brand-accent)]">:</span>
               {state.teamB.score}
-            </div>
-            <div className="text-[0.65rem] tracking-[0.18em] text-muted uppercase">
-              Tore
             </div>
           </div>
           <TeamNameEditor
@@ -265,15 +309,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
           Best of 5
         </button>
       </div>
-
-      {(error || authError) && (
-        <p
-          role="alert"
-          className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-center text-sm text-red-200"
-        >
-          {error ?? authError}
-        </p>
-      )}
 
       <div className="grid grid-cols-2 gap-3">
         <GoalButton
@@ -333,22 +368,84 @@ export function ControlPanel({ roomId, initialState }: Props) {
         onSelect={(view) => run({ type: "setView", view })}
       />
 
+      <div className="glass-panel space-y-2 p-3">
+        <label className="block text-xs tracking-wide text-muted uppercase">
+          Starting-Soon Text
+        </label>
+        <input
+          value={startingDraft}
+          maxLength={80}
+          onChange={(e) => setStartingDraft(e.target.value)}
+          onBlur={() => {
+            const next = startingDraft.trim() || null;
+            if (next !== (state.startingMessage ?? null)) {
+              run({ type: "setStartingMessage", message: next });
+            }
+          }}
+          className="glass-input py-2 text-sm text-white"
+          placeholder="Gleich geht’s los"
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-2">
         <SmallBtn
           disabled={pending}
-          onClick={() => run({ type: "resetMatch" })}
+          onClick={() =>
+            run({
+              type: "setSfx",
+              enabled: !state.sfxEnabled,
+            })
+          }
         >
-          Match reset
+          Sound {state.sfxEnabled ? "an" : "aus"}
+        </SmallBtn>
+        <SmallBtn
+          disabled={pending || !state.sfxEnabled}
+          onClick={() =>
+            run({
+              type: "setSfx",
+              volume: state.sfxVolume >= 0.85 ? 0.4 : state.sfxVolume >= 0.55 ? 0.85 : 0.7,
+            })
+          }
+        >
+          Vol {(state.sfxVolume * 100).toFixed(0)}%
+        </SmallBtn>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <SmallBtn
+          disabled={pending}
+          onClick={() => run({ type: "finishSet" })}
+        >
+          Satz beenden
         </SmallBtn>
         <button
           type="button"
           disabled={pending}
-          onClick={() => run({ type: "finishMatch" })}
+          onClick={() =>
+            confirmRun(
+              "Aktuelles Spiel wirklich beenden und Zwischenstand zeigen?",
+              { type: "finishMatch" },
+            )
+          }
           className="btn btn-danger text-xl"
         >
           Spiel beenden
         </button>
       </div>
+
+      <SmallBtn
+        disabled={pending}
+        onClick={() =>
+          confirmRun(
+            "Komplettes Match zurücksetzen (Tore, Sätze, History)?",
+            { type: "resetMatch" },
+          )
+        }
+      >
+        Match reset
+      </SmallBtn>
+
       <p className="text-center text-xs text-muted">
         Satz: bis 5 Tore, 2 Abstand, max. 7:6 · Lineup 2D–2E–2D–2E–2D
       </p>
@@ -416,14 +513,18 @@ function ViewSwitcher({
     "startingSoon",
     "live",
     "standings",
+    "brb",
+    "ending",
   ];
-  const labels = {
-    startingSoon: "Starting Soon",
+  const labels: Record<Exclude<ActiveView, "transition">, string> = {
+    startingSoon: "Soon",
     live: "Live",
-    standings: "Zwischenstand",
+    standings: "Stand",
+    brb: "BRB",
+    ending: "Ende",
   };
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-5 gap-1.5">
       {views.map((view) => {
         const isActive = active === view;
         return (
@@ -432,7 +533,7 @@ function ViewSwitcher({
             type="button"
             disabled={pending || active === "transition"}
             onClick={() => onSelect(view)}
-            className={`btn min-h-12 px-1 py-3 text-sm sm:text-base ${
+            className={`btn min-h-12 px-0.5 py-3 text-xs sm:text-sm ${
               isActive ? "btn-primary" : "btn-ghost"
             }`}
           >

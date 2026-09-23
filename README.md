@@ -3,8 +3,8 @@
 Twitch/OBS Scoreboard for [Tischfußball Club Florstadt](https://www.tfc-florstadt.de/).
 
 - **Preview Lab** – test without Twitch or OBS
-- **Control** – mobile web app (PIN) for goals, timer, screens
-- **Overlay** – transparent 1920×1080 browser source for OBS
+- **Control** – mobile web app (PIN) for goals, timer, screens (PWA-installable)
+- **Overlay** – transparent 1920×1080 browser source for OBS (SFX via Web Audio)
 
 ## Stack
 
@@ -29,38 +29,43 @@ The phone must reach your laptop. Use the LAN IP, e.g. `http://192.168.x.x:3000`
 
 1. Create a free project at [supabase.com](https://supabase.com)
 2. Run SQL from [`supabase/migrations/001_rooms.sql`](supabase/migrations/001_rooms.sql)
-3. Set env vars (see `.env.example`) on Vercel / `.env.local`
-4. Set a strong `ROOM_SESSION_SECRET` (≥ 32 characters)
+3. Run [`supabase/migrations/002_hide_pin_hash.sql`](supabase/migrations/002_hide_pin_hash.sql) (hides `pin_hash` from anon)
+4. Set env vars (see `.env.example`) on Vercel / `.env.local`
+5. Set a strong `ROOM_SESSION_SECRET` (≥ 32 characters) and `CRON_SECRET`
 
-### Keep Supabase Free awake (Vercel Cron)
+### Keep Supabase Free awake + room cleanup (Vercel Cron)
 
-Supabase **Free** projects pause after ~7 days of inactivity. This repo ships a **daily keep-alive cron** so that does not happen in production:
+| Cron | Schedule (UTC) | Purpose |
+|------|----------------|---------|
+| `/api/cron/keep-alive` | `0 8 * * *` | Daily DB ping (avoid Free pause) |
+| `/api/cron/cleanup-rooms` | `30 8 * * *` | Delete rooms idle &gt; 7 days |
 
-1. Deploy to Vercel (Hobby is fine – cron runs once per day)
+1. Deploy to Vercel (Hobby is fine – crons once per day)
 2. Set `CRON_SECRET` in the Vercel project env (≥ 16 random chars)
-3. After deploy, check **Project → Settings → Cron Jobs** – path `/api/cron/keep-alive`, schedule `0 8 * * *` (08:00 UTC)
+3. Check **Project → Settings → Cron Jobs**
 
-The job does a lightweight `rooms` head query with the service role.
-
-If the project is already **Paused** (e.g. before the cron was live): open the [Supabase Dashboard](https://supabase.com/dashboard) → **Restore / Resume**, wait 1–2 minutes, then reload Lab/Control/Overlay.
+If the project is already **Paused**: [Supabase Dashboard](https://supabase.com/dashboard) → **Restore / Resume**, wait 1–2 minutes.
 
 ## OBS Studio
 
 1. Source → **Browser**
-2. URL: `https://YOUR_DOMAIN/overlay/ROOM_ID`
+2. URL: `https://YOUR_DOMAIN/overlay/ROOM_ID` (copy from Lab)
 3. Width **1920**, Height **1080**
 4. Uncheck “Shutdown source when not visible”
-5. Custom CSS (recommended):
+5. Enable **audio** on the browser source (overlay SFX: goal / view switch / set)
+6. Custom CSS (recommended):
 
 ```css
 body { background-color: rgba(0,0,0,0) !important; margin: 0 !important; overflow: hidden !important; }
 ```
 
+Do **not** put Preview Lab on camera if the PIN is revealed.
+
 ## Security
 
-- Overlay/Lab: public read
+- Overlay/Lab: public read of `state` only (`pin_hash` revoked for anon after migration 002)
 - Control: PIN required (hashed at rest), httpOnly session cookie
-- Mutations only via Server Actions with session check
+- Mutations via Server Actions with session + optional revision conflict check
 - Do not show the PIN on stream
 
 ## Routes
@@ -71,7 +76,8 @@ body { background-color: rgba(0,0,0,0) !important; margin: 0 !important; overflo
 | `/lab/[roomId]` | Preview without Twitch |
 | `/control/[roomId]` | Mobile control (PIN) |
 | `/overlay/[roomId]` | OBS browser source |
-| `/api/cron/keep-alive` | Daily Supabase ping (Vercel Cron) |
+| `/api/cron/keep-alive` | Daily Supabase ping |
+| `/api/cron/cleanup-rooms` | Delete stale rooms |
 
 ## Scripts
 
@@ -79,5 +85,5 @@ body { background-color: rgba(0,0,0,0) !important; margin: 0 !important; overflo
 npm run dev
 npm run build
 npm run start
+npm test
 ```
-# tfc-florstadt-overlay

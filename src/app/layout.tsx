@@ -5,6 +5,15 @@ export const metadata: Metadata = {
   title: "TFC Florstadt Stream Overlay",
   description:
     "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.",
+  applicationName: "TFC Florstadt Overlay",
+  appleWebApp: {
+    capable: true,
+    title: "TFC Control",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   robots: {
     index: false,
     follow: false,

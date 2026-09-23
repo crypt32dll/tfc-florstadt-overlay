@@ -24,6 +24,8 @@ export function createInitialState(
     startingMessage: "Gleich geht’s los",
     history: [],
     sessionWins: { a: 0, b: 0 },
+    sfxEnabled: true,
+    sfxVolume: 0.7,
     updatedAt: Date.now(),
     revision: 1,
   };
@@ -41,6 +43,11 @@ export function normalizeState(raw: MatchState): MatchState {
     matchFormat: raw.matchFormat === "bestOf5" ? "bestOf5" : "bestOf3",
     lineupIndex,
     gameType: raw.gameType ?? GAME_LINEUP[lineupIndex],
+    sfxEnabled: raw.sfxEnabled ?? true,
+    sfxVolume:
+      typeof raw.sfxVolume === "number"
+        ? Math.min(1, Math.max(0, raw.sfxVolume))
+        : 0.7,
   };
 }
 
@@ -256,6 +263,31 @@ export function applyMutation(
     case "setTargetScore": {
       // Legacy no-op kept for schema compat — format replaces targetScore
       return bump({ ...state, targetScore: mutation.targetScore });
+    }
+    case "setSfx": {
+      return bump({
+        ...state,
+        sfxEnabled: mutation.enabled ?? state.sfxEnabled,
+        sfxVolume:
+          mutation.volume != null
+            ? Math.min(1, Math.max(0, mutation.volume))
+            : state.sfxVolume,
+      });
+    }
+    case "setLineupIndex": {
+      const index = Math.min(
+        Math.max(0, mutation.index),
+        GAME_LINEUP.length - 1,
+      );
+      return bump({
+        ...state,
+        lineupIndex: index,
+        gameType: GAME_LINEUP[index],
+        teamA: { ...state.teamA, score: 0 },
+        teamB: { ...state.teamB, score: 0 },
+        sets: { a: 0, b: 0 },
+        timer: { running: false, startedAt: null, elapsedMs: 0 },
+      });
     }
     default:
       return state;

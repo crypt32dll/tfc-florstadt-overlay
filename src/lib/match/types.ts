@@ -1,4 +1,10 @@
-export type ActiveView = "startingSoon" | "live" | "standings" | "transition";
+export type ActiveView =
+  | "startingSoon"
+  | "live"
+  | "standings"
+  | "brb"
+  | "ending"
+  | "transition";
 
 export type TeamSide = "a" | "b";
 
@@ -41,6 +47,10 @@ export type MatchState = {
   history: MatchHistoryEntry[];
   /** Gesamt: won sets across the whole match */
   sessionWins: { a: number; b: number };
+  /** Overlay SFX (played in OBS browser source) */
+  sfxEnabled: boolean;
+  /** 0–1 */
+  sfxVolume: number;
   updatedAt: number;
   revision: number;
 };
@@ -64,4 +74,6 @@ export type RoomMutation =
   | { type: "setStartingMessage"; message: string | null }
   | { type: "swapSides" }
   | { type: "setMatchFormat"; format: MatchFormat }
-  | { type: "setTargetScore"; targetScore: number | null };
+  | { type: "setTargetScore"; targetScore: number | null }
+  | { type: "setSfx"; enabled?: boolean; volume?: number }
+  | { type: "setLineupIndex"; index: number };

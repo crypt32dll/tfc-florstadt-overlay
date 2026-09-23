@@ -4,6 +4,7 @@ export type RoomStore = {
   create(room: RoomRecord): Promise<void>;
   get(roomId: string): Promise<RoomRecord | null>;
   save(room: RoomRecord): Promise<void>;
+  deleteOlderThan(olderThanMs: number): Promise<number>;
   mode: "memory" | "supabase";
 };
 
@@ -31,6 +32,17 @@ export const memoryStore: RoomStore = {
   },
   async save(room) {
     getGlobal().rooms.set(room.id, room);
+  },
+  async deleteOlderThan(olderThanMs) {
+    const cutoff = Date.now() - olderThanMs;
+    let n = 0;
+    for (const [id, room] of getGlobal().rooms) {
+      if (room.updatedAt < cutoff) {
+        getGlobal().rooms.delete(id);
+        n += 1;
+      }
+    }
+    return n;
   },
 };
 

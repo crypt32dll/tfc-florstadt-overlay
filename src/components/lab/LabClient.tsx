@@ -25,6 +25,7 @@ export function LabClient({
   const [qr, setQr] = useState<string>("");
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showPin, setShowPin] = useState(false);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -140,12 +141,38 @@ export function LabClient({
             </dd>
           </div>
           {pinHint && (
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted">PIN</dt>
-              <dd className="font-mono tracking-widest">{pinHint}</dd>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted">PIN</dt>
+                <dd>
+                  <button
+                    type="button"
+                    onClick={() => setShowPin((v) => !v)}
+                    className="text-xs text-[var(--brand-accent)] underline-offset-2 hover:underline"
+                  >
+                    {showPin ? "verbergen" : "anzeigen"}
+                  </button>
+                </dd>
+              </div>
+              {showPin ? (
+                <p className="font-mono tracking-widest text-white">{pinHint}</p>
+              ) : (
+                <p className="text-xs text-amber-200/90">
+                  Nicht auf Stream/Kamera zeigen.
+                </p>
+              )}
             </div>
           )}
         </dl>
+
+        {!connected && (
+          <p
+            role="status"
+            className="rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+          >
+            Verbindung unterbrochen – Status aktualisiert sich verzögert.
+          </p>
+        )}
 
         {error && (
           <p className="rounded-[var(--radius-control)] border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -194,6 +221,18 @@ export function LabClient({
         >
           {copied ? "OBS-Link kopiert" : "OBS Overlay-Link kopieren"}
         </button>
+
+        <section className="border-t border-white/10 pt-4 text-xs text-muted">
+          <h2 className="font-display text-lg tracking-wide text-white uppercase">
+            OBS Checkliste
+          </h2>
+          <ol className="mt-2 list-decimal space-y-1.5 pl-4">
+            <li>Browser Source 1920×1080, Overlay-URL</li>
+            <li>„Shutdown when not visible“ aus</li>
+            <li>Audio der Browser Source an (für Overlay-Sounds)</li>
+            <li>Custom CSS für transparenten Body</li>
+          </ol>
+        </section>
       </aside>
     </div>
   );

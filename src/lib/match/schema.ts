@@ -2,6 +2,14 @@ import { z } from "zod";
 
 export const teamSideSchema = z.enum(["a", "b"]);
 
+export const activeViewSchema = z.enum([
+  "startingSoon",
+  "live",
+  "standings",
+  "brb",
+  "ending",
+]);
+
 export const teamNameSchema = z
   .string()
   .trim()
@@ -52,7 +60,7 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("finishSet") }),
   z.object({
     type: z.literal("setView"),
-    view: z.enum(["startingSoon", "live", "standings"]),
+    view: activeViewSchema,
   }),
   z.object({ type: z.literal("transitionComplete") }),
   z.object({
@@ -67,6 +75,15 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setTargetScore"),
     targetScore: z.number().int().min(1).max(99).nullable(),
+  }),
+  z.object({
+    type: z.literal("setSfx"),
+    enabled: z.boolean().optional(),
+    volume: z.number().min(0).max(1).optional(),
+  }),
+  z.object({
+    type: z.literal("setLineupIndex"),
+    index: z.number().int().min(0).max(9),
   }),
 ]);
 

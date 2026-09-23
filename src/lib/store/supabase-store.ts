@@ -76,4 +76,18 @@ export const supabaseStore: RoomStore = {
       throw error;
     }
   },
+  async deleteOlderThan(olderThanMs) {
+    const sb = getAdmin();
+    const cutoff = new Date(Date.now() - olderThanMs).toISOString();
+    const { data, error } = await sb
+      .from("rooms")
+      .delete()
+      .lt("updated_at", cutoff)
+      .select("id");
+    if (error) {
+      log.error("deleteOlderThan failed", error);
+      throw error;
+    }
+    return data?.length ?? 0;
+  },
 };

@@ -154,12 +154,26 @@ export async function checkControlAuth(
 async function applyAndSave(
   roomIdParam: string,
   mutation: RoomMutation,
+  expectedRevision?: number,
 ): Promise<ActionResult<{ state: MatchState }>> {
   const store = await getStore();
   const room = await store.get(roomIdParam);
   if (!room) return { ok: false, error: "Raum nicht gefunden" };
 
-  const nextState = normalizeState(applyMutation(room.state, mutation));
+  const current = normalizeState(room.state);
+  if (
+    expectedRevision != null &&
+    current.revision !== expectedRevision
+  ) {
+    log.warn("revision conflict", {
+      roomId: roomIdParam,
+      expected: expectedRevision,
+      actual: current.revision,
+    });
+    return { ok: false, error: "CONFLICT" };
+  }
+
+  const nextState = normalizeState(applyMutation(current, mutation));
   await store.save({
     ...room,
     state: nextState,
@@ -171,11 +185,12 @@ async function applyAndSave(
 export async function mutateRoom(
   roomIdParam: string,
   mutationInput: RoomMutation,
+  opts?: { expectedRevision?: number },
 ): Promise<ActionResult<{ state: MatchState }>> {
   try {
     await assertRoomAuthorized(roomIdParam);
     const mutation = mutationSchema.parse(mutationInput);
-    return applyAndSave(roomIdParam, mutation);
+    return applyAndSave(roomIdParam, mutation, opts?.expectedRevision);
   } catch (e) {
     if (e instanceof Error && e.message === "UNAUTHORIZED") {
       log.warn("mutateRoom unauthorized", { roomId: roomIdParam });
