@@ -5,6 +5,14 @@ export const metadata: Metadata = {
   title: "TFC Florstadt Stream Overlay",
   description:
     "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.",
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
   icons: {
     icon: [
       { url: "/brand/icons/icon-16.png", sizes: "16x16", type: "image/png" },
