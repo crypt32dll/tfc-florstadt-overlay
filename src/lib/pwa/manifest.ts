@@ -20,15 +20,24 @@ const ICONS: MetadataRoute.Manifest["icons"] = [
   },
 ];
 
-/** Manifest when installing / launching from a Control room (QR → phone). */
-export function controlManifest(roomId: string): MetadataRoute.Manifest {
-  const startUrl = `/control/${roomId}`;
+/**
+ * One Control PWA for all rooms.
+ * QR deep-links stay `/control/{roomId}` (in scope); the icon opens `/control`
+ * which forwards to the last room. launch_handler navigates an existing window
+ * when a new room URL is opened (Android Chrome).
+ */
+export function controlManifest(): MetadataRoute.Manifest & {
+  launch_handler?: { client_mode: string | string[] };
+  related_applications?: { platform: string; url: string }[];
+  prefer_related_applications?: boolean;
+} {
   return {
-    id: startUrl,
+    id: "/control",
     name: "TFC Florstadt Control",
     short_name: "TFC Control",
-    description: "Match-Control für Tischfußball Club Florstadt Stream Overlay",
-    start_url: startUrl,
+    description:
+      "Match-Control für Tischfußball Club Florstadt – ein Icon für alle Räume",
+    start_url: "/control",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -36,10 +45,21 @@ export function controlManifest(roomId: string): MetadataRoute.Manifest {
     theme_color: "#0693e3",
     lang: "de",
     icons: ICONS,
+    launch_handler: {
+      client_mode: ["navigate-existing", "auto"],
+    },
+    // Enables navigator.getInstalledRelatedApps() in Chromium
+    related_applications: [
+      {
+        platform: "webapp",
+        url: "/api/manifest/control",
+      },
+    ],
+    prefer_related_applications: false,
   };
 }
 
-/** Site-wide manifest (create-room home). Prefer installing from Control after QR. */
+/** Site-wide manifest (create-room home). Prefer installing Control from /control. */
 export function siteManifest(): MetadataRoute.Manifest {
   return {
     id: "/",
@@ -85,4 +105,13 @@ export function isIosSafari(): boolean {
   const webkit = /WebKit/.test(ua);
   const notOther = !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
   return iOS && webkit && notOther;
+}
+
+export function readLastControlRoom(): string | null {
+  try {
+    const id = window.localStorage.getItem(CONTROL_ROOM_STORAGE_KEY);
+    return id && isValidRoomId(id) ? id : null;
+  } catch {
+    return null;
+  }
 }

@@ -30,15 +30,46 @@ function writeFlag(key: string) {
   }
 }
 
+function isAndroidChrome(): boolean {
+  const ua = navigator.userAgent;
+  return (
+    /Android/i.test(ua) && /Chrome/i.test(ua) && !/EdgA|OPR|Samsung/i.test(ua)
+  );
+}
+
+async function detectInstalledPwa(): Promise<boolean> {
+  if (isStandaloneDisplay()) return true;
+
+  const nav = navigator as Navigator & {
+    getInstalledRelatedApps?: () => Promise<
+      { platform: string; url?: string }[]
+    >;
+  };
+  if (typeof nav.getInstalledRelatedApps === "function") {
+    try {
+      const apps = await nav.getInstalledRelatedApps();
+      if (apps.some((a) => a.platform === "webapp" || Boolean(a.url))) {
+        return true;
+      }
+    } catch {
+      // unsupported / permission
+    }
+  }
+
+  return false;
+}
+
 /**
- * Modal hint to install Control as a PWA after scanning the Lab QR.
- * Hidden when already standalone, previously dismissed, or marked installed.
+ * Install hint after QR → Control.
+ * Shows only when install is possible (Chrome BIP or iOS A2HS).
+ * Already-installed is detected automatically — no manual button.
  */
 export function PwaInstallPrompt() {
   const [open, setOpen] = useState(false);
   const [ios, setIos] = useState(false);
   const [canPrompt, setCanPrompt] = useState(false);
   const deferredRef = useRef<BeforeInstallPromptEvent | null>(null);
+  const bipSeenRef = useRef(false);
 
   const dismiss = useCallback((permanent: boolean) => {
     if (permanent) writeFlag(PWA_INSTALL_DISMISSED_KEY);
@@ -47,25 +78,29 @@ export function PwaInstallPrompt() {
 
   const markInstalled = useCallback(() => {
     writeFlag(PWA_INSTALLED_KEY);
-    writeFlag(PWA_INSTALL_DISMISSED_KEY);
     setOpen(false);
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    let decideTimer: number | undefined;
+
     if (isStandaloneDisplay()) {
       writeFlag(PWA_INSTALLED_KEY);
       return;
     }
-    if (readFlag(PWA_INSTALLED_KEY) || readFlag(PWA_INSTALL_DISMISSED_KEY)) {
+    if (readFlag(PWA_INSTALL_DISMISSED_KEY) || readFlag(PWA_INSTALLED_KEY)) {
       return;
     }
 
-    setIos(isIosSafari());
-
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
+      bipSeenRef.current = true;
       deferredRef.current = e as BeforeInstallPromptEvent;
-      setCanPrompt(true);
+      if (!cancelled) {
+        setCanPrompt(true);
+        setOpen(true);
+      }
     };
 
     const onInstalled = () => {
@@ -75,14 +110,38 @@ export function PwaInstallPrompt() {
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
     window.addEventListener("appinstalled", onInstalled);
 
-    const timer = window.setTimeout(() => {
-      // Show for Chromium (after bip) or iOS Safari (manual A2HS).
-      // Other browsers: still show a short hint so QR visitors see the option.
-      setOpen(true);
-    }, 900);
+    void (async () => {
+      if (await detectInstalledPwa()) {
+        if (!cancelled) markInstalled();
+        return;
+      }
+      if (cancelled) return;
+
+      const onIos = isIosSafari();
+      setIos(onIos);
+
+      decideTimer = window.setTimeout(() => {
+        void detectInstalledPwa().then((installed) => {
+          if (cancelled) return;
+          if (installed) {
+            markInstalled();
+            return;
+          }
+          if (onIos || bipSeenRef.current) {
+            setOpen(true);
+            return;
+          }
+          // Android Chrome without BIP ≈ already installed or not installable
+          if (isAndroidChrome()) {
+            markInstalled();
+          }
+        });
+      }, 1200);
+    })();
 
     return () => {
-      window.clearTimeout(timer);
+      cancelled = true;
+      if (decideTimer) window.clearTimeout(decideTimer);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
       window.removeEventListener("appinstalled", onInstalled);
     };
@@ -125,8 +184,9 @@ export function PwaInstallPrompt() {
             Als App installieren
           </h2>
           <p className="text-sm text-muted">
-            Control liegt dann als Icon auf dem Homescreen und öffnet direkt
-            diesen Raum – ideal nach dem QR-Scan.
+            Einmal installieren – ein Icon für alle Matches. Ob der QR danach
+            die App öffnet, entscheidet das Handy (Android oft, iPhone bleibt im
+            Safari).
           </p>
         </div>
 
@@ -145,9 +205,7 @@ export function PwaInstallPrompt() {
           </ol>
         ) : (
           <p className="rounded-[var(--radius-control)] border border-white/10 bg-black/25 px-3 py-2 text-center text-sm text-white/80">
-            {canPrompt
-              ? "Mit einem Tip installierst du TFC Control wie eine App."
-              : "Über das Browser-Menü „App installieren“ bzw. „Zum Startbildschirm“ hinzufügen."}
+            Mit einem Tip installierst du TFC Control wie eine App.
           </p>
         )}
 
@@ -161,13 +219,6 @@ export function PwaInstallPrompt() {
               Jetzt installieren
             </button>
           )}
-          <button
-            type="button"
-            className="btn btn-ghost w-full text-base"
-            onClick={() => markInstalled()}
-          >
-            Bereits installiert
-          </button>
           <button
             type="button"
             className="btn btn-ghost w-full text-base text-muted"
