@@ -2,12 +2,12 @@ import { CreateRoomForm } from "@/components/brand/CreateRoomForm";
 
 export default function HomePage() {
   return (
-    <main className="app-shell flex h-dvh max-h-dvh flex-col overflow-hidden px-4 py-4 sm:px-6 sm:py-6">
-      <div className="mx-auto grid h-full w-full max-w-5xl grid-cols-1 items-stretch gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:gap-6">
-        <div className="flex min-h-0 items-center justify-center overflow-y-auto">
+    <main className="app-shell flex flex-col px-4 py-4 sm:px-6 sm:py-6 md:h-dvh md:max-h-dvh md:overflow-hidden">
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-1 items-stretch gap-4 md:h-full md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] md:gap-6">
+        <div className="flex items-center justify-center md:min-h-0 md:overflow-y-auto">
           <CreateRoomForm />
         </div>
-        <aside className="glass-panel flex min-h-0 flex-col justify-start gap-6 overflow-y-auto p-5 sm:p-6 md:self-center md:justify-center">
+        <aside className="glass-panel flex flex-col justify-start gap-6 p-5 sm:p-6 md:min-h-0 md:justify-center md:self-center md:overflow-y-auto">
           <section>
             <h2 className="font-display text-2xl tracking-wide text-white uppercase sm:text-3xl">
               Schnellstart
