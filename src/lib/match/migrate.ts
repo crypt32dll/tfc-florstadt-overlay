@@ -1,5 +1,12 @@
 import { GAME_LINEUP } from "./rules";
-import type { MatchState } from "./types";
+import { KICKER_COLORS } from "./schema";
+import type { KickerColor, MatchState } from "./types";
+
+function asKickerColor(value: unknown, fallback: KickerColor): KickerColor {
+  return KICKER_COLORS.includes(value as KickerColor)
+    ? (value as KickerColor)
+    : fallback;
+}
 
 /**
  * Backfill fields for rooms saved before set-based scoring / SFX / format.
@@ -20,6 +27,8 @@ export function normalizeState(raw: MatchState): MatchState {
     matchFormat: rest.matchFormat === "bestOf5" ? "bestOf5" : "bestOf3",
     lineupIndex,
     gameType: rest.gameType ?? GAME_LINEUP[lineupIndex],
+    teamAColor: asKickerColor(rest.teamAColor, "blue"),
+    teamBColor: asKickerColor(rest.teamBColor, "red"),
     brbMessage: rest.brbMessage ?? "Kurze Pause – gleich geht’s weiter.",
     endingMessage:
       rest.endingMessage ?? "Follow für die nächsten Matches aus der Wetterau.",

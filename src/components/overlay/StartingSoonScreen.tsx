@@ -2,18 +2,26 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { KickerFigure } from "@/components/overlay/KickerFigure";
 import type { MatchState } from "@/lib/match/types";
 
-export function StartingSoonScreen({ state }: { state: MatchState }) {
+export function StartingSoonScreen({
+  state,
+  instant = false,
+}: {
+  state: MatchState;
+  instant?: boolean;
+}) {
   const reduceMotion = useReducedMotion();
+  const skipMotion = Boolean(reduceMotion || instant);
 
   return (
     <motion.div
       className="overlay-soon-bg absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden px-8 py-8 text-white md:px-12 md:py-10"
-      initial={reduceMotion ? false : { opacity: 0 }}
+      initial={skipMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={reduceMotion ? undefined : { opacity: 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.28 }}
+      exit={skipMotion ? undefined : { opacity: 0 }}
+      transition={{ duration: skipMotion ? 0 : 0.28 }}
     >
       <div className="pointer-events-none absolute inset-0 opacity-30">
         <div
@@ -30,11 +38,11 @@ export function StartingSoonScreen({ state }: { state: MatchState }) {
 
       <motion.div
         className="relative flex max-h-full w-full max-w-4xl flex-col items-center"
-        initial={reduceMotion ? false : { y: 12, opacity: 0 }}
+        initial={skipMotion ? false : { y: 12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{
-          duration: reduceMotion ? 0 : 0.45,
-          delay: reduceMotion ? 0 : 0.05,
+          duration: skipMotion ? 0 : 0.45,
+          delay: skipMotion ? 0 : 0.05,
         }}
       >
         <BrandMark
@@ -55,23 +63,27 @@ export function StartingSoonScreen({ state }: { state: MatchState }) {
       </motion.div>
 
       <div className="overlay-glass overlay-glass-accent relative mt-8 w-full max-w-3xl shrink-0 px-6 py-5 md:mt-10 md:px-10 md:py-6">
-        <div className="flex items-center justify-between gap-6">
-          <div className="min-w-0 flex-1 text-center">
-            <div className="text-xs tracking-[0.22em] text-[var(--brand-accent)] uppercase">
-              Team A
-            </div>
-            <div className="overlay-score mt-1 truncate text-4xl md:text-5xl">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 md:gap-x-8">
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            <div className="overlay-score truncate text-4xl md:text-5xl">
               {state.teamA.name}
             </div>
+            <KickerFigure
+              color={state.teamAColor}
+              size={36}
+              className="shrink-0"
+            />
           </div>
-          <div className="overlay-score shrink-0 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-2xl text-white/70">
+          <div className="overlay-score flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-2xl leading-none text-white/70">
             VS
           </div>
-          <div className="min-w-0 flex-1 text-center">
-            <div className="text-xs tracking-[0.22em] text-[var(--brand-accent)] uppercase">
-              Team B
-            </div>
-            <div className="overlay-score mt-1 truncate text-4xl md:text-5xl">
+          <div className="flex min-w-0 items-center justify-start gap-2">
+            <KickerFigure
+              color={state.teamBColor}
+              size={36}
+              className="shrink-0"
+            />
+            <div className="overlay-score truncate text-4xl md:text-5xl">
               {state.teamB.name}
             </div>
           </div>

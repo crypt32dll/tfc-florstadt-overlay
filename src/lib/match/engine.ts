@@ -1,16 +1,30 @@
 import { getElapsedMs } from "./format";
-import { GAME_LINEUP, isSetComplete, setsToWin, winnerSide } from "./rules";
+import {
+  GAME_LINEUP,
+  isDecidingSet,
+  isSetComplete,
+  maxGoals,
+  sessionWinsFromHistory,
+  setsToWin,
+  winnerSide,
+} from "./rules";
 import type { MatchState, RoomMutation, TeamSide } from "./types";
 
 export function createInitialState(
   teamA = "TFC Florstadt",
   teamB = "",
+  colors?: {
+    teamAColor?: MatchState["teamAColor"];
+    teamBColor?: MatchState["teamBColor"];
+  },
 ): MatchState {
   return {
     activeView: "startingSoon",
     transitionTo: null,
     teamA: { name: teamA, score: 0 },
     teamB: { name: teamB, score: 0 },
+    teamAColor: colors?.teamAColor ?? "blue",
+    teamBColor: colors?.teamBColor ?? "red",
     sets: { a: 0, b: 0 },
     matchFormat: "bestOf3",
     lineupIndex: 0,
@@ -143,10 +157,11 @@ export function applyMutation(
 ): MatchState {
   switch (mutation.type) {
     case "goal": {
+      const deciding = isDecidingSet(state);
       const key = mutation.side === "a" ? "teamA" : "teamB";
       const nextScore = Math.max(
         0,
-        Math.min(7, state[key].score + mutation.delta),
+        Math.min(maxGoals(deciding), state[key].score + mutation.delta),
       );
       if (nextScore === state[key].score) return state;
 
@@ -166,7 +181,7 @@ export function applyMutation(
       if (mutation.delta === 1) {
         const a = next.teamA.score;
         const b = next.teamB.score;
-        if (isSetComplete(a, b)) {
+        if (isSetComplete(a, b, { deciding })) {
           const w = winnerSide(a, b);
           if (w) next = bump(completeSet(next, w));
         }
@@ -231,8 +246,12 @@ export function applyMutation(
       return bump(completeGame(state));
     }
     case "finishSet": {
+      const deciding = isDecidingSet(state);
       const w = winnerSide(state.teamA.score, state.teamB.score);
-      if (!w || !isSetComplete(state.teamA.score, state.teamB.score)) {
+      if (
+        !w ||
+        !isSetComplete(state.teamA.score, state.teamB.score, { deciding })
+      ) {
         // Force-complete if someone leads
         if (state.teamA.score === state.teamB.score) return state;
         const lead = state.teamA.score > state.teamB.score ? "a" : "b";
@@ -248,9 +267,11 @@ export function applyMutation(
         activeView: "transition",
         transitionTo: mutation.view,
       };
-      // Live = match is on → start the clock
+      // Live = match is on → start the clock; BRB/Stand → pause
       if (mutation.view === "live") {
         next = startTimer(next);
+      } else if (mutation.view === "brb" || mutation.view === "standings") {
+        next = pauseTimer(next);
       }
       return bump(next);
     }
@@ -274,13 +295,49 @@ export function applyMutation(
       return bump({ ...state, [key]: mutation.message });
     }
     case "swapSides": {
+      const history = state.history.map((game) => ({
+        ...game,
+        teamA: game.teamB,
+        teamB: game.teamA,
+        scoreA: game.scoreB,
+        scoreB: game.scoreA,
+      }));
       return bump({
         ...state,
         teamA: state.teamB,
         teamB: state.teamA,
         sets: { a: state.sets.b, b: state.sets.a },
         sessionWins: { a: state.sessionWins.b, b: state.sessionWins.a },
+        history,
       });
+    }
+    case "editHistory": {
+      if (mutation.index < 0 || mutation.index >= state.history.length) {
+        return state;
+      }
+      const nextHistory = [...state.history];
+      if (mutation.remove) {
+        nextHistory.splice(mutation.index, 1);
+      } else {
+        const game = nextHistory[mutation.index];
+        nextHistory[mutation.index] = {
+          ...game,
+          teamA: mutation.teamA ?? game.teamA,
+          teamB: mutation.teamB ?? game.teamB,
+          scoreA: mutation.scoreA ?? game.scoreA,
+          scoreB: mutation.scoreB ?? game.scoreB,
+        };
+      }
+      return bump({
+        ...state,
+        history: nextHistory,
+        sessionWins: sessionWinsFromHistory(nextHistory),
+      });
+    }
+    case "setTeamColor": {
+      const key = mutation.side === "a" ? "teamAColor" : "teamBColor";
+      if (state[key] === mutation.color) return state;
+      return bump({ ...state, [key]: mutation.color });
     }
     case "setMatchFormat": {
       return bump({ ...state, matchFormat: mutation.format });

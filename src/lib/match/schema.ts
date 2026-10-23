@@ -21,6 +21,16 @@ export type TeamSide = z.infer<typeof teamSideSchema>;
 export const overlayMessageSlotSchema = z.enum(["starting", "brb", "ending"]);
 export type OverlayMessageSlot = z.infer<typeof overlayMessageSlotSchema>;
 
+export const KICKER_COLORS = [
+  "black",
+  "white",
+  "green",
+  "blue",
+  "red",
+] as const;
+export const kickerColorSchema = z.enum(KICKER_COLORS);
+export type KickerColor = z.infer<typeof kickerColorSchema>;
+
 export const teamNameSchema = z
   .string()
   .trim()
@@ -42,6 +52,8 @@ export const createRoomSchema = z.object({
     .trim()
     .min(1, "Team B: Name eingeben")
     .max(32, "Team B: Maximal 32 Zeichen"),
+  teamAColor: kickerColorSchema.optional(),
+  teamBColor: kickerColorSchema.optional(),
 });
 
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
@@ -93,6 +105,20 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setLineupIndex"),
     index: z.number().int().min(0).max(9),
+  }),
+  z.object({
+    type: z.literal("editHistory"),
+    index: z.number().int().min(0).max(19),
+    teamA: z.string().trim().min(1).max(32).optional(),
+    teamB: z.string().trim().min(1).max(32).optional(),
+    scoreA: z.number().int().min(0).max(9).optional(),
+    scoreB: z.number().int().min(0).max(9).optional(),
+    remove: z.boolean().optional(),
+  }),
+  z.object({
+    type: z.literal("setTeamColor"),
+    side: teamSideSchema,
+    color: kickerColorSchema,
   }),
 ]);
 

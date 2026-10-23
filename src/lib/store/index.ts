@@ -18,11 +18,15 @@ export type RoomStore = {
   deleteOlderThan(olderThanMs: number): Promise<number>;
   /** Lightweight read used by keep-alive cron to touch Supabase / count rooms. */
   countRooms(): Promise<number>;
+  /** Stable OBS master URL resolves to this room (latest created). */
+  getLiveRoomId(): Promise<string | null>;
+  setLiveRoomId(roomId: string): Promise<void>;
   mode: "memory" | "supabase";
 };
 
 type GlobalStore = {
   rooms: Map<string, RoomRecord>;
+  liveRoomId: string | null;
 };
 
 function getGlobal(): GlobalStore {
@@ -30,7 +34,7 @@ function getGlobal(): GlobalStore {
     __tfcRoomStore?: GlobalStore;
   };
   if (!g.__tfcRoomStore) {
-    g.__tfcRoomStore = { rooms: new Map() };
+    g.__tfcRoomStore = { rooms: new Map(), liveRoomId: null };
   }
   return g.__tfcRoomStore;
 }
@@ -56,9 +60,11 @@ export const memoryStore: RoomStore = {
   async deleteOlderThan(olderThanMs) {
     const cutoff = Date.now() - olderThanMs;
     let n = 0;
-    for (const [id, room] of getGlobal().rooms) {
+    const g = getGlobal();
+    for (const [id, room] of g.rooms) {
       if (room.updatedAt < cutoff) {
-        getGlobal().rooms.delete(id);
+        g.rooms.delete(id);
+        if (g.liveRoomId === id) g.liveRoomId = null;
         n += 1;
       }
     }
@@ -66,6 +72,12 @@ export const memoryStore: RoomStore = {
   },
   async countRooms() {
     return getGlobal().rooms.size;
+  },
+  async getLiveRoomId() {
+    return getGlobal().liveRoomId;
+  },
+  async setLiveRoomId(roomId) {
+    getGlobal().liveRoomId = roomId;
   },
 };
 

@@ -1,12 +1,13 @@
 export type {
   DestinationView,
+  KickerColor,
   MatchFormat,
   OverlayMessageSlot,
   RoomMutation,
   TeamSide,
 } from "./schema";
 
-import type { DestinationView, MatchFormat } from "./schema";
+import type { DestinationView, KickerColor, MatchFormat } from "./schema";
 
 export type ActiveView = DestinationView | "transition";
 
@@ -30,6 +31,8 @@ export type MatchState = {
   /** Goals in the current set */
   teamA: { name: string; score: number };
   teamB: { name: string; score: number };
+  teamAColor: KickerColor;
+  teamBColor: KickerColor;
   /** Sets won in the current game (Doppel/Einzel) */
   sets: { a: number; b: number };
   matchFormat: MatchFormat;

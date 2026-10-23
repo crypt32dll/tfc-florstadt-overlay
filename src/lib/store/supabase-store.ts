@@ -122,4 +122,29 @@ export const supabaseStore: RoomStore = {
     }
     return count ?? 0;
   },
+  async getLiveRoomId() {
+    const sb = getAdmin();
+    const { data, error } = await sb
+      .from("stream_pointer")
+      .select("room_id")
+      .eq("id", "live")
+      .maybeSingle();
+    if (error) {
+      log.error("getLiveRoomId failed", error);
+      throw error;
+    }
+    return (data as { room_id: string } | null)?.room_id ?? null;
+  },
+  async setLiveRoomId(roomId) {
+    const sb = getAdmin();
+    const { error } = await sb.from("stream_pointer").upsert({
+      id: "live",
+      room_id: roomId,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      log.error("setLiveRoomId failed", { roomId }, error);
+      throw error;
+    }
+  },
 };

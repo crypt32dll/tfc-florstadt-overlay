@@ -68,12 +68,12 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
       }
       if (cancelled) return;
 
-      // OBS is typically 1× CSS pixels at 1920×1080 — DPR 2 = 4K fillrate
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      // OBS Browser Source is usually 1920×1080 at 1× — keep DPR flat for fillrate
+      const dpr = 1;
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: dpr < 1.25,
+        antialias: false,
         premultipliedAlpha: false,
         powerPreference: "high-performance",
         stencil: false,
@@ -120,9 +120,9 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
 
       const rings: THREE.Mesh[] = [];
       const ringMats: THREE.MeshBasicMaterial[] = [];
-      for (let i = 0; i < 2; i += 1) {
+      {
         const ring = new THREE.Mesh(
-          new THREE.RingGeometry(1.4, 1.55, segs),
+          new THREE.RingGeometry(1.4, 1.55, 24),
           new THREE.MeshBasicMaterial({
             color: 0x0693e3,
             transparent: true,
@@ -131,7 +131,7 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             side: THREE.DoubleSide,
           }),
         );
-        ring.position.z = -0.08 - i * 0.03;
+        ring.position.z = -0.08;
         scene.add(ring);
         rings.push(ring);
         ringMats.push(ring.material as THREE.MeshBasicMaterial);
@@ -251,14 +251,8 @@ export function KickerTransition({ onComplete, durationMs = 2000 }: Props) {
             lastFov = fov;
           }
 
-          if (t >= 0.38 && t < 0.5) {
-            const s = 1 - (t - 0.38) / 0.12;
-            camera.position.x = Math.sin(t * 90) * 0.035 * s;
-            camera.position.y = Math.cos(t * 70) * 0.025 * s;
-          } else {
-            camera.position.x = 0;
-            camera.position.y = 0;
-          }
+          camera.position.x = 0;
+          camera.position.y = 0;
 
           renderer.render(scene, camera);
         }

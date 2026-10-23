@@ -31,6 +31,8 @@ export async function createRoom(input?: {
   pin?: string;
   teamA?: string;
   teamB?: string;
+  teamAColor?: string;
+  teamBColor?: string;
 }): Promise<
   ActionResult<{
     roomId: string;
@@ -43,17 +45,23 @@ export async function createRoom(input?: {
       pin: input?.pin,
       teamA: input?.teamA ?? "",
       teamB: input?.teamB ?? "",
+      teamAColor: input?.teamAColor,
+      teamBColor: input?.teamBColor,
     });
     const pin = parsed.pin ?? generatePin(4);
     const id = roomId();
     const store = await getStore();
-    const state = createInitialState(parsed.teamA, parsed.teamB);
+    const state = createInitialState(parsed.teamA, parsed.teamB, {
+      teamAColor: parsed.teamAColor,
+      teamBColor: parsed.teamBColor,
+    });
     await store.create({
       id,
       pinHash: await hashPin(pin),
       state,
       updatedAt: state.updatedAt,
     });
+    await store.setLiveRoomId(id);
     await createRoomSession(id);
     log.info("room created", { roomId: id, storeMode: store.mode });
     return actionOk({ roomId: id, pin, storeMode: store.mode });
@@ -254,4 +262,24 @@ export async function getStoreInfo(): Promise<{
     mode: hasSupabaseConfig() ? "supabase" : "memory",
     supabaseConfigured: hasSupabaseConfig(),
   };
+}
+
+/** Resolve the stable /overlay/live master pointer (latest created room). */
+export async function getLiveOverlayRoom(): Promise<
+  ActionResult<{ roomId: string; state: MatchState }>
+> {
+  try {
+    const store = await getStore();
+    const liveId = await store.getLiveRoomId();
+    if (!liveId) return actionFail("NOT_FOUND", "Kein Live-Raum gesetzt");
+    const room = await store.get(liveId);
+    if (!room) return actionFail("NOT_FOUND", "Live-Raum nicht gefunden");
+    return actionOk({ roomId: liveId, state: normalizeState(room.state) });
+  } catch (e) {
+    log.error("getLiveOverlayRoom failed", e);
+    return actionFail(
+      "UNKNOWN",
+      e instanceof Error ? e.message : "Live-Raum laden fehlgeschlagen",
+    );
+  }
 }

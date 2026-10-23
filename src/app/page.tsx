@@ -36,9 +36,9 @@ export default function HomePage() {
               <li>
                 URL:{" "}
                 <code className="rounded bg-black/35 px-1.5 py-0.5 text-xs text-[var(--brand-accent)]">
-                  …/overlay/RAUM-ID
+                  …/overlay/live
                 </code>{" "}
-                (aus dem Lab kopieren)
+                (Master-URL aus dem Lab – bleibt über Spiele hinweg gleich)
               </li>
               <li>
                 Breite <strong className="text-white/90">1920</strong>, Höhe{" "}

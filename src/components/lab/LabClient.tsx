@@ -72,8 +72,8 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
     [origin, roomId],
   );
   const overlayUrl = useMemo(
-    () => (origin ? `${origin}/overlay/${roomId}` : ""),
-    [origin, roomId],
+    () => (origin ? `${origin}/overlay/live` : ""),
+    [origin],
   );
 
   useEffect(() => {
@@ -258,7 +258,9 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
             copied ? "btn-primary" : "btn-ghost"
           }`}
         >
-          {copied ? "OBS-Link kopiert" : "OBS Overlay-Link kopieren"}
+          {copied
+            ? "Master-URL kopiert"
+            : "OBS Master-URL kopieren (/overlay/live)"}
         </button>
 
         <section className="border-t border-white/10 pt-4 text-xs text-muted">
@@ -266,7 +268,10 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
             OBS Checkliste
           </h2>
           <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-            <li>Browser Source 1920×1080, Overlay-URL</li>
+            <li>
+              Browser Source 1920×1080, feste URL{" "}
+              <code className="text-[var(--brand-accent)]">/overlay/live</code>
+            </li>
             <li>„Shutdown when not visible“ aus</li>
             <li>
               Audio der Browser Source an – dann im Control „Sound testen“

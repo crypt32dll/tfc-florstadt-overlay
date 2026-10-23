@@ -71,7 +71,8 @@ Use Supabase when more than one machine must share a room, or when you deploy.
 1. Create a project at [supabase.com](https://supabase.com).
 2. Run [`supabase/migrations/001_rooms.sql`](supabase/migrations/001_rooms.sql) in the SQL editor.
 3. Run [`supabase/migrations/002_hide_pin_hash.sql`](supabase/migrations/002_hide_pin_hash.sql) so anon clients cannot read `pin_hash`.
-4. Copy [`.env.example`](.env.example) to `.env.local` (local) or set the same variables on Vercel.
+4. Run [`supabase/migrations/003_stream_pointer.sql`](supabase/migrations/003_stream_pointer.sql) for the `/overlay/live` master URL.
+5. Copy [`.env.example`](.env.example) to `.env.local` (local) or set the same variables on Vercel.
 
 | Variable | Role |
 | --- | --- |
@@ -100,21 +101,21 @@ If the Supabase project is already paused, resume it from the [dashboard](https:
 ## OBS Studio
 
 1. Add a **Browser** source.
-2. URL: `https://YOUR_DOMAIN/overlay/ROOM_ID` (copy it from the Lab).
+2. URL: `https://YOUR_DOMAIN/overlay/live` (stable master URL — always the latest created room; copy from the Lab).
 3. Width **1920**, height **1080**.
 4. Turn off “Shutdown source when not visible”.
 5. Turn **audio** on for that source so goal, set, and screen sounds play.
 
-The overlay page already paints a transparent `html`/`body` — no Custom CSS in OBS.
+The overlay page already paints a transparent `html`/`body` — no Custom CSS in OBS. Per-room URLs (`/overlay/ROOM_ID`) still work for previews.
 
 > [!WARNING]
 > Do not put Preview Lab on camera while the PIN is visible. The overlay URL itself does not show the PIN.
 
 ## Match rules
 
-A set is played to 5 with a two-goal lead, and ends at 7–6 at the latest. Best of 3 needs 2 sets. Best of 5 needs 3. Finishing a set advances the lineup (Doppel or Einzel) and adds the set to the session total.
+Normal sets are first to 5 (including 5–4). A deciding set (Bo3 at 1–1, Bo5 at 2–2) needs a two-goal lead from 5, continues after 4–4 until two ahead, and caps at 8–7. Best of 3 needs 2 sets; best of 5 needs 3. Finishing a game advances the lineup (Doppel or Einzel) and adds it to the session total.
 
-Control can correct a goal, reset the clock, swap sides, and jump to a lineup slot. Screen changes play the logo sting, then land on the chosen view.
+Control can correct a goal, edit past games, reset the clock, swap sides (including standings history), pick kicker colors, and jump to a lineup slot. Screen changes play the logo sting, then land on the chosen view.
 
 ## Security
 

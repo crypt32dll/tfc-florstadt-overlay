@@ -68,6 +68,8 @@ export function OverlayShell({
     );
   }, []);
 
+  const stinging = state.activeView === "transition";
+
   const onTransitionComplete = useCallback(async () => {
     if (completingRef.current) return;
     completingRef.current = true;
@@ -106,22 +108,27 @@ export function OverlayShell({
     >
       <AnimatePresence mode="sync">
         {isShowingView(state, "startingSoon") && (
-          <StartingSoonScreen key="soon" state={state} />
+          <StartingSoonScreen key="soon" state={state} instant={stinging} />
         )}
-        {isShowingView(state, "live") && <Scorebug key="live" state={state} />}
+        {isShowingView(state, "live") && (
+          <Scorebug key="live" state={state} instant={stinging} />
+        )}
         {isShowingView(state, "standings") && (
-          <StandingsScreen key="standings" state={state} />
+          <StandingsScreen key="standings" state={state} instant={stinging} />
         )}
-        {isShowingView(state, "brb") && <BrbScreen key="brb" state={state} />}
+        {isShowingView(state, "brb") && (
+          <BrbScreen key="brb" state={state} instant={stinging} />
+        )}
         {isShowingView(state, "ending") && (
-          <EndingScreen key="ending" state={state} />
+          <EndingScreen key="ending" state={state} instant={stinging} />
         )}
       </AnimatePresence>
 
-      {state.activeView === "transition" && (
+      {stinging && (
         <KickerTransition
           key={`kick-${state.revision}-${state.transitionTo}`}
           onComplete={onTransitionComplete}
+          durationMs={1600}
         />
       )}
 

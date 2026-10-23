@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { createRoom } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { KickerColorPicker } from "@/components/brand/KickerColorPicker";
 import { actionErrorMessage } from "@/lib/action/result";
-import { createRoomSchema } from "@/lib/match/schema";
+import { createRoomSchema, type KickerColor } from "@/lib/match/schema";
 
 type FieldErrors = {
   teamA?: string;
@@ -16,6 +17,8 @@ type FieldErrors = {
 export function CreateRoomForm() {
   const [teamA, setTeamA] = useState("TFC Florstadt");
   const [teamB, setTeamB] = useState("");
+  const [teamAColor, setTeamAColor] = useState<KickerColor>("blue");
+  const [teamBColor, setTeamBColor] = useState<KickerColor>("red");
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -37,6 +40,8 @@ export function CreateRoomForm() {
       teamA,
       teamB,
       pin: pin || undefined,
+      teamAColor,
+      teamBColor,
     });
 
     if (!parsed.success) {
@@ -160,57 +165,63 @@ export function CreateRoomForm() {
         </p>
       </div>
 
-      <label className="block space-y-1.5 text-sm text-muted">
-        Team A
-        <input
-          ref={teamARef}
-          name="teamA"
-          autoComplete="organization"
-          value={teamA}
-          onChange={(e) => {
-            setTeamA(e.target.value);
-            if (fieldErrors.teamA) {
-              setFieldErrors((prev) => ({ ...prev, teamA: undefined }));
-            }
-          }}
-          aria-invalid={Boolean(fieldErrors.teamA)}
-          aria-describedby={fieldErrors.teamA ? "teamA-error" : undefined}
-          className={`glass-input text-base text-white ${
-            fieldErrors.teamA ? "border-red-400/60" : ""
-          }`}
-        />
-        {fieldErrors.teamA && (
-          <p id="teamA-error" role="alert" className="text-xs text-red-300">
-            {fieldErrors.teamA}
-          </p>
-        )}
-      </label>
-      <label className="block space-y-1.5 text-sm text-muted">
-        Team B
-        <input
-          ref={teamBRef}
-          name="teamB"
-          autoComplete="off"
-          value={teamB}
-          onChange={(e) => {
-            setTeamB(e.target.value);
-            if (fieldErrors.teamB) {
-              setFieldErrors((prev) => ({ ...prev, teamB: undefined }));
-            }
-          }}
-          placeholder="Gegner…"
-          aria-invalid={Boolean(fieldErrors.teamB)}
-          aria-describedby={fieldErrors.teamB ? "teamB-error" : undefined}
-          className={`glass-input text-base text-white ${
-            fieldErrors.teamB ? "border-red-400/60" : ""
-          }`}
-        />
-        {fieldErrors.teamB && (
-          <p id="teamB-error" role="alert" className="text-xs text-red-300">
-            {fieldErrors.teamB}
-          </p>
-        )}
-      </label>
+      <div className="space-y-1.5">
+        <label className="block space-y-1.5 text-sm text-muted">
+          Team A
+          <input
+            ref={teamARef}
+            name="teamA"
+            autoComplete="organization"
+            value={teamA}
+            onChange={(e) => {
+              setTeamA(e.target.value);
+              if (fieldErrors.teamA) {
+                setFieldErrors((prev) => ({ ...prev, teamA: undefined }));
+              }
+            }}
+            aria-invalid={Boolean(fieldErrors.teamA)}
+            aria-describedby={fieldErrors.teamA ? "teamA-error" : undefined}
+            className={`glass-input text-base text-white ${
+              fieldErrors.teamA ? "border-red-400/60" : ""
+            }`}
+          />
+          {fieldErrors.teamA && (
+            <p id="teamA-error" role="alert" className="text-xs text-red-300">
+              {fieldErrors.teamA}
+            </p>
+          )}
+        </label>
+        <KickerColorPicker value={teamAColor} onChange={setTeamAColor} />
+      </div>
+      <div className="space-y-1.5">
+        <label className="block space-y-1.5 text-sm text-muted">
+          Team B
+          <input
+            ref={teamBRef}
+            name="teamB"
+            autoComplete="off"
+            value={teamB}
+            onChange={(e) => {
+              setTeamB(e.target.value);
+              if (fieldErrors.teamB) {
+                setFieldErrors((prev) => ({ ...prev, teamB: undefined }));
+              }
+            }}
+            placeholder="Gegner…"
+            aria-invalid={Boolean(fieldErrors.teamB)}
+            aria-describedby={fieldErrors.teamB ? "teamB-error" : undefined}
+            className={`glass-input text-base text-white ${
+              fieldErrors.teamB ? "border-red-400/60" : ""
+            }`}
+          />
+          {fieldErrors.teamB && (
+            <p id="teamB-error" role="alert" className="text-xs text-red-300">
+              {fieldErrors.teamB}
+            </p>
+          )}
+        </label>
+        <KickerColorPicker value={teamBColor} onChange={setTeamBColor} />
+      </div>
       <label className="block space-y-1.5 text-sm text-muted">
         PIN (optional, sonst automatisch)
         <input

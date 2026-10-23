@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { KickerFigure } from "@/components/overlay/KickerFigure";
 import { formatTimer, getElapsedMs } from "@/lib/match/format";
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
@@ -30,9 +31,17 @@ function LiveTimerDigits({ state }: { state: MatchState }) {
   );
 }
 
-export function Scorebug({ state }: { state: MatchState }) {
+export function Scorebug({
+  state,
+  instant = false,
+}: {
+  state: MatchState;
+  /** Skip enter/exit while logo sting runs (OBS perf). */
+  instant?: boolean;
+}) {
   const pulseKey = `${state.teamA.score}-${state.teamB.score}-${state.sets.a}-${state.sets.b}`;
   const reduceMotion = useReducedMotion();
+  const skipMotion = Boolean(reduceMotion || instant);
   const need = setsToWin(state.matchFormat);
   const gameLabel = state.gameType === "doppel" ? "Doppel" : "Einzel";
   const spielNr = state.lineupIndex + 1;
@@ -40,16 +49,16 @@ export function Scorebug({ state }: { state: MatchState }) {
   return (
     <motion.div
       className="pointer-events-none absolute bottom-10 left-1/2 z-20 w-[min(980px,92%)] -translate-x-1/2"
-      initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+      initial={skipMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={reduceMotion ? undefined : { opacity: 0, y: 10 }}
+      exit={skipMotion ? undefined : { opacity: 0, y: 10 }}
       transition={{
-        duration: reduceMotion ? 0 : 0.28,
+        duration: skipMotion ? 0 : 0.28,
         ease: [0.22, 1, 0.36, 1],
       }}
     >
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-1.5 text-[0.65rem] tracking-[0.16em] text-white/70 uppercase md:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-2 text-[0.8rem] tracking-[0.16em] text-white/70 uppercase md:px-5 md:text-sm">
           <span>
             Spiel {spielNr}/{GAME_LINEUP.length} · {gameLabel}
           </span>
@@ -90,11 +99,17 @@ export function Scorebug({ state }: { state: MatchState }) {
             </motion.div>
 
             <div className="grid w-full grid-cols-2 items-center">
-              <div className="overlay-score truncate pr-[3.6rem] text-right text-2xl leading-none text-white md:pr-[4.25rem] md:text-3xl">
-                {state.teamA.name}
+              <div className="flex items-center justify-end gap-2 pr-[3.6rem] md:pr-[4.25rem]">
+                <div className="overlay-score truncate text-right text-2xl leading-none text-white md:text-3xl">
+                  {state.teamA.name}
+                </div>
+                <KickerFigure color={state.teamAColor} size={26} />
               </div>
-              <div className="overlay-score truncate pl-[3.6rem] text-left text-2xl leading-none text-white md:pl-[4.25rem] md:text-3xl">
-                {state.teamB.name}
+              <div className="flex items-center justify-start gap-2 pl-[3.6rem] md:pl-[4.25rem]">
+                <KickerFigure color={state.teamBColor} size={26} />
+                <div className="overlay-score truncate text-left text-2xl leading-none text-white md:text-3xl">
+                  {state.teamB.name}
+                </div>
               </div>
             </div>
           </div>

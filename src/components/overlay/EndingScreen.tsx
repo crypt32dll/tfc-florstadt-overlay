@@ -4,16 +4,23 @@ import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
 import type { MatchState } from "@/lib/match/types";
 
-export function EndingScreen({ state }: { state: MatchState }) {
+export function EndingScreen({
+  state,
+  instant = false,
+}: {
+  state: MatchState;
+  instant?: boolean;
+}) {
   const reduceMotion = useReducedMotion();
+  const skipMotion = Boolean(reduceMotion || instant);
 
   return (
     <motion.div
       className="overlay-soon-bg absolute inset-0 z-20 flex flex-col items-center justify-center overflow-hidden px-8 py-8 text-white md:px-12"
-      initial={reduceMotion ? false : { opacity: 0 }}
+      initial={skipMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={reduceMotion ? undefined : { opacity: 0 }}
-      transition={{ duration: reduceMotion ? 0 : 0.28 }}
+      exit={skipMotion ? undefined : { opacity: 0 }}
+      transition={{ duration: skipMotion ? 0 : 0.28 }}
     >
       <BrandMark
         size={96}
