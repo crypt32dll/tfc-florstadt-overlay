@@ -33,6 +33,7 @@ export function BrandMark({
       className={`object-contain ${className}`}
       style={{ width: display, height: display }}
       priority={priority}
+      loading={priority ? "eager" : "lazy"}
       quality={100}
       aria-hidden
     />

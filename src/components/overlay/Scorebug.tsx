@@ -48,7 +48,7 @@ export function Scorebug({
 
   return (
     <motion.div
-      className="pointer-events-none absolute bottom-10 left-1/2 z-20 w-[min(980px,92%)] -translate-x-1/2"
+      className="pointer-events-none absolute bottom-10 left-1/2 z-20 w-[min(1180px,96%)] -translate-x-1/2"
       initial={skipMotion ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={skipMotion ? undefined : { opacity: 0, y: 10 }}
