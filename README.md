@@ -17,11 +17,11 @@ Scoreboard for [Tischfußball Club Florstadt](https://www.tfc-florstadt.de/) str
 
 One room has three surfaces:
 
-| Surface | Path | Who uses it |
-| --- | --- | --- |
-| Preview Lab | `/lab/[roomId]` | Laptop, without Twitch or OBS |
-| Control | `/control/[roomId]` | Phone (PIN) |
-| Overlay | `/overlay/[roomId]` | OBS browser source |
+| Surface     | Path                | Who uses it                   |
+| ----------- | ------------------- | ----------------------------- |
+| Preview Lab | `/lab/[roomId]`     | Laptop, without Twitch or OBS |
+| Control     | `/control/[roomId]` | Phone (PIN)                   |
+| Overlay     | `/overlay/[roomId]` | OBS browser source            |
 
 Creating a room on `/` issues a 4-digit PIN. Control stores a hashed PIN and an httpOnly session cookie. Overlay and Lab only receive match state.
 
@@ -56,32 +56,31 @@ Open [http://localhost:3000](http://localhost:3000), create a room, and note the
 
 ### Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Next.js dev server |
+| Command                       | Purpose                     |
+| ----------------------------- | --------------------------- |
+| `npm run dev`                 | Next.js dev server          |
 | `npm run build` / `npm start` | Production build and server |
-| `npm test` | Vitest |
-| `npm run lint` | Biome check |
-| `npm run format` | Biome format |
+| `npm test`                    | Vitest                      |
+| `npm run lint`                | Biome check                 |
+| `npm run format`              | Biome format                |
 
 ## Supabase
 
 Use Supabase when more than one machine must share a room, or when you deploy.
-
 1. Create a project at [supabase.com](https://supabase.com).
 2. Run [`supabase/migrations/001_rooms.sql`](supabase/migrations/001_rooms.sql) in the SQL editor.
 3. Run [`supabase/migrations/002_hide_pin_hash.sql`](supabase/migrations/002_hide_pin_hash.sql) so anon clients cannot read `pin_hash`.
 4. Run [`supabase/migrations/003_stream_pointer.sql`](supabase/migrations/003_stream_pointer.sql) for the `/overlay/live` master URL.
 5. Copy [`.env.example`](.env.example) to `.env.local` (local) or set the same variables on Vercel.
 
-| Variable | Role |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Realtime read of `id`, `state`, `updated_at` |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only writes |
-| `ROOM_SESSION_SECRET` | Signs the Control session. At least 32 characters in production |
-| `CRON_SECRET` | Authorizes the Vercel cron routes. At least 16 characters |
-| `NEXT_PUBLIC_SITE_URL` | Optional canonical origin for OG/share links (e.g. `https://overlay.example.com`). On Vercel, production URL is used if unset |
+| Variable                        | Role                                                                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Project URL                                                                                                                   |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Realtime read of `id`, `state`, `updated_at`                                                                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server-only writes                                                                                                            |
+| `ROOM_SESSION_SECRET`           | Signs the Control session. At least 32 characters in production                                                               |
+| `CRON_SECRET`                   | Authorizes the Vercel cron routes. At least 16 characters                                                                     |
+| `NEXT_PUBLIC_SITE_URL`          | Optional canonical origin for OG/share links (e.g. `https://overlay.example.com`). On Vercel, production URL is used if unset |
 
 Leave the Supabase variables empty for the in-memory store.
 
@@ -89,9 +88,9 @@ Leave the Supabase variables empty for the in-memory store.
 
 [`vercel.json`](vercel.json) schedules two jobs (UTC):
 
-| Cron | Schedule | Purpose |
-| --- | --- | --- |
-| `/api/cron/keep-alive` | `0 8 * * *` | Daily database ping |
+| Cron                      | Schedule     | Purpose                                |
+| ------------------------- | ------------ | -------------------------------------- |
+| `/api/cron/keep-alive`    | `0 8 * * *`  | Daily database ping                    |
 | `/api/cron/cleanup-rooms` | `30 8 * * *` | Delete rooms idle for more than 7 days |
 
 Deploy to Vercel, set `CRON_SECRET`, and confirm the jobs under **Project → Settings → Cron Jobs**. Vercel sends `Authorization: Bearer <CRON_SECRET>`.
