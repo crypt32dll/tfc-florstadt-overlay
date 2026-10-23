@@ -3,19 +3,16 @@
 import { AnimatePresence } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef } from "react";
-import { completeTransition } from "@/app/actions/rooms";
 import { useOverlaySfx } from "@/lib/hooks/useOverlaySfx";
 import { useRoomState } from "@/lib/hooks/useRoomState";
-import { clientLog } from "@/lib/logger.client";
 import type { MatchState } from "@/lib/match/types";
 import { isShowingView } from "@/lib/match/views";
+import { runTransitionComplete } from "@/lib/overlay/runTransitionComplete";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
 import { Scorebug } from "./Scorebug";
 import { StandingsScreen } from "./StandingsScreen";
 import { StartingSoonScreen } from "./StartingSoonScreen";
-
-const log = clientLog("overlay-shell");
 
 const KickerTransition = dynamic(
   () => import("./KickerTransition").then((m) => m.KickerTransition),
@@ -40,10 +37,6 @@ type Props = {
    */
   sync?: RoomSync;
 };
-
-async function sleep(ms: number) {
-  await new Promise((r) => setTimeout(r, ms));
-}
 
 export function OverlayShell({
   roomId,
@@ -74,24 +67,7 @@ export function OverlayShell({
     if (completingRef.current) return;
     completingRef.current = true;
     try {
-      let lastError: string | null = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        const res = await completeTransition(roomId);
-        if (res.ok) {
-          replaceState(res.data.state);
-          return;
-        }
-        lastError = res.code;
-        log.warn("completeTransition failed", { attempt, code: res.code });
-        await sleep(250 * (attempt + 1));
-      }
-
-      // Server remains MatchState authority — refresh only, no local applyMutation.
-      log.error(
-        "completeTransition giving up – refreshing from store",
-        lastError,
-      );
-      await refresh();
+      await runTransitionComplete(roomId, { replaceState, refresh });
     } finally {
       completingRef.current = false;
     }

@@ -33,6 +33,11 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: "TFC Florstadt Overlay",
+  appleWebApp: {
+    capable: true,
+    title: "TFC Control",
+    statusBarStyle: "black-translucent",
+  },
   formatDetection: {
     telephone: false,
   },
@@ -58,6 +63,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any" },
       { url: "/brand/icons/icon-16.png", sizes: "16x16", type: "image/png" },
       { url: "/brand/icons/icon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/brand/icons/icon-48.png", sizes: "48x48", type: "image/png" },
@@ -72,7 +78,7 @@ export const metadata: Metadata = {
         type: "image/png",
       },
     ],
-    shortcut: "/brand/icons/icon-32.png",
+    shortcut: "/favicon.ico",
   },
 };
 

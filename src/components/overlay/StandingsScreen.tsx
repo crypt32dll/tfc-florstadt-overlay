@@ -56,14 +56,14 @@ export function StandingsScreen({
             </p>
           ) : (
             <ul className="space-y-1.5">
-              {state.history.slice(0, 10).map((game, i) => (
+              {state.history.slice(0, 10).map((game, index) => (
                 <li
-                  key={`${game.finishedAt}-${i}`}
+                  key={game.finishedAt}
                   className="grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-4 rounded-lg px-3 py-3 odd:bg-white/[0.04]"
                 >
                   <span className="w-20 text-[0.75rem] tracking-wide text-white/45 uppercase">
-                    {(game.lineupIndex ?? state.history.length - 1 - i) + 1}.{" "}
-                    {game.gameType === "einzel" ? "Einzel" : "Doppel"}
+                    {(game.lineupIndex ?? state.history.length - 1 - index) + 1}
+                    . {game.gameType === "einzel" ? "Einzel" : "Doppel"}
                   </span>
                   <span className="overlay-score truncate text-right text-3xl">
                     {game.teamA}

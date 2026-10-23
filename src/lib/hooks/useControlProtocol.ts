@@ -88,6 +88,10 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
   const [pending, startTransition] = useTransition();
   const [toast, setToast] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    message: string;
+    mutation: RoomMutation;
+  } | null>(null);
   const depsRef = useRef(deps);
   depsRef.current = deps;
 
@@ -100,15 +104,13 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
   const showInfoToast = useCallback((message: string) => setToast(message), []);
 
   const run = useCallback(
-    (mutation: RoomMutation, opts?: { skipRevisionCheck?: boolean }) => {
+    (mutation: RoomMutation) => {
       startTransition(async () => {
         const { replaceState, refresh, getRevision, onUnauthorized } =
           depsRef.current;
         try {
           const res = await mutateRoom(roomId, mutation, {
-            expectedRevision: opts?.skipRevisionCheck
-              ? undefined
-              : getRevision(),
+            expectedRevision: getRevision(),
           });
           if (!res.ok) {
             if (res.code === "UNAUTHORIZED") {
@@ -145,17 +147,27 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
     [roomId, showInfoToast],
   );
 
-  const confirmRun = useCallback(
-    (message: string, mutation: RoomMutation) => {
-      if (typeof window !== "undefined" && !window.confirm(message)) return;
-      run(mutation);
-    },
-    [run],
-  );
+  const confirmRun = useCallback((message: string, mutation: RoomMutation) => {
+    setPendingConfirm({ message, mutation });
+  }, []);
+
+  const acceptConfirm = useCallback(() => {
+    if (!pendingConfirm) return;
+    const { mutation } = pendingConfirm;
+    setPendingConfirm(null);
+    run(mutation);
+  }, [pendingConfirm, run]);
+
+  const dismissConfirm = useCallback(() => {
+    setPendingConfirm(null);
+  }, []);
 
   return {
     run,
     confirmRun,
+    acceptConfirm,
+    dismissConfirm,
+    pendingConfirm,
     pending,
     toast,
     mutationError,

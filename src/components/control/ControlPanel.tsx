@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { ConfirmSheet } from "@/components/control/ConfirmSheet";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
 import {
   useControlSession,
@@ -18,6 +19,7 @@ import type {
   MatchHistoryEntry,
   MatchState,
 } from "@/lib/match/types";
+import { runTransitionComplete } from "@/lib/overlay/runTransitionComplete";
 
 function subscribeNow(onStoreChange: () => void, running: boolean) {
   if (!running) return () => {};
@@ -59,15 +61,23 @@ export function ControlPanel({ roomId, initialState }: Props) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const { run, confirmRun, pending, toast, mutationError } = useRoomMutate(
-    roomId,
-    {
-      replaceState,
-      refresh,
-      getRevision: () => stateRef.current.revision,
-      onUnauthorized: () => session.setAuthorized(false),
-    },
-  );
+  const {
+    run,
+    confirmRun,
+    acceptConfirm,
+    dismissConfirm,
+    pendingConfirm,
+    pending,
+    toast,
+    mutationError,
+  } = useRoomMutate(roomId, {
+    replaceState,
+    refresh,
+    getRevision: () => stateRef.current.revision,
+    onUnauthorized: () => session.setAuthorized(false),
+  });
+
+  const [transitionBusy, setTransitionBusy] = useState(false);
 
   const [startingDraft, setStartingDraft] = useSyncedState(
     state.startingMessage ?? "",
@@ -159,7 +169,28 @@ export function ControlPanel({ roomId, initialState }: Props) {
   }
 
   return (
-    <div className="app-shell mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <div
+      className="app-shell relative mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      aria-busy={pending || transitionBusy}
+    >
+      {(pending || transitionBusy) && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-40 h-1 overflow-hidden bg-white/10"
+          aria-hidden
+        >
+          <div className="h-full w-1/3 animate-pulse bg-[var(--brand-accent)]" />
+        </div>
+      )}
+
+      {pendingConfirm && (
+        <ConfirmSheet
+          message={pendingConfirm.message}
+          busy={pending}
+          onConfirm={acceptConfirm}
+          onCancel={dismissConfirm}
+        />
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <BrandMark size={48} />
         <div className="text-right text-xs">
@@ -171,13 +202,19 @@ export function ControlPanel({ roomId, initialState }: Props) {
       </div>
 
       {!connected && (
-        <output className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">
+        <output
+          aria-live="polite"
+          className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
+        >
           Verbindung unterbrochen – Änderungen ggf. verzögert. WLAN prüfen.
         </output>
       )}
 
       {toast && (
-        <output className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100">
+        <output
+          aria-live="polite"
+          className="block rounded-[var(--radius-control)] border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-center text-sm text-amber-100"
+        >
           {toast}
         </output>
       )}
@@ -269,33 +306,33 @@ export function ControlPanel({ roomId, initialState }: Props) {
         <GoalButton
           label={state.teamA.name}
           color={state.teamAColor}
-          disabled={pending}
+          busy={pending}
           onGoal={() => run({ type: "goal", side: "a", delta: 1 })}
         />
         <GoalButton
           label={state.teamB.name}
           color={state.teamBColor}
-          disabled={pending}
+          busy={pending}
           onGoal={() => run({ type: "goal", side: "b", delta: 1 })}
         />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
-        <SmallBtn
+        <UndoGoalButton
+          label={state.teamA.name}
+          color={state.teamAColor}
           disabled={pending}
           onClick={() => run({ type: "goal", side: "a", delta: -1 })}
-        >
-          − A
-        </SmallBtn>
+        />
         <SmallBtn disabled={pending} onClick={() => run({ type: "swapSides" })}>
           Seiten tauschen
         </SmallBtn>
-        <SmallBtn
+        <UndoGoalButton
+          label={state.teamB.name}
+          color={state.teamBColor}
           disabled={pending}
           onClick={() => run({ type: "goal", side: "b", delta: -1 })}
-        >
-          − B
-        </SmallBtn>
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-2">
@@ -328,13 +365,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
       {state.activeView === "transition" && (
         <button
           type="button"
-          disabled={pending}
-          onClick={() =>
-            run({ type: "transitionComplete" }, { skipRevisionCheck: true })
-          }
-          className="btn btn-primary w-full text-lg"
+          disabled={pending || transitionBusy}
+          aria-busy={transitionBusy}
+          onClick={() => {
+            setTransitionBusy(true);
+            void runTransitionComplete(roomId, {
+              replaceState,
+              refresh,
+            }).finally(() => setTransitionBusy(false));
+          }}
+          className="btn btn-primary sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 w-full text-lg shadow-lg"
         >
-          Transition abschließen
+          {transitionBusy ? "Schließe Transition…" : "Transition abschließen"}
         </button>
       )}
 
@@ -445,7 +487,14 @@ export function ControlPanel({ roomId, initialState }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <SmallBtn disabled={pending} onClick={() => run({ type: "finishSet" })}>
+        <SmallBtn
+          disabled={pending}
+          onClick={() =>
+            confirmRun("Aktuellen Satz wirklich beenden?", {
+              type: "finishSet",
+            })
+          }
+        >
           Satz beenden
         </SmallBtn>
         <button
@@ -524,7 +573,7 @@ function HistoryEditor({
       <ul className="space-y-3">
         {history.map((game, index) => (
           <HistoryRow
-            key={`${game.finishedAt}-${index}`}
+            key={game.finishedAt}
             game={game}
             index={index}
             pending={pending}
@@ -646,17 +695,18 @@ function GoalButton({
   label,
   color,
   onGoal,
-  disabled,
+  busy,
 }: {
   label: string;
   color: MatchState["teamAColor"];
   onGoal: () => void;
-  disabled?: boolean;
+  /** Visual busy only — Tor+ stays tappable so rapid goals aren't blocked. */
+  busy?: boolean;
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
+      aria-busy={busy}
       onClick={onGoal}
       className="btn btn-primary min-h-28 flex-col gap-1 px-2 py-4 text-white"
     >
@@ -666,6 +716,34 @@ function GoalButton({
       <span className="flex max-w-full items-center justify-center gap-1.5 text-sm font-sans font-normal normal-case tracking-normal opacity-90">
         <KickerFigure color={color} size={22} className="shrink-0" />
         <span className="truncate">{label}</span>
+      </span>
+    </button>
+  );
+}
+
+function UndoGoalButton({
+  label,
+  color,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  color: MatchState["teamAColor"];
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={`Tor zurücknehmen ${label}`}
+      className="btn btn-ghost flex min-h-12 items-center justify-center gap-1.5 px-2 py-3 text-base"
+    >
+      <span className="font-display text-xl leading-none">−</span>
+      <KickerFigure color={color} size={20} className="shrink-0" />
+      <span className="max-w-[4.5rem] truncate text-sm font-sans font-normal normal-case tracking-normal">
+        {label}
       </span>
     </button>
   );

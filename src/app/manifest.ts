@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.",
     start_url: "/",
-    display: "browser",
+    display: "standalone",
+    orientation: "portrait",
     background_color: "#05080f",
     theme_color: "#0693e3",
     lang: "de",
@@ -16,11 +17,19 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/brand/icons/icon-192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
       },
       {
         src: "/brand/icons/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/brand/icons/icon-512.png",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };
