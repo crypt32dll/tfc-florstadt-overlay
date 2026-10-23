@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { KickerFigure } from "@/components/overlay/KickerFigure";
 import {
   useControlSession,
   useRoomMutate,
@@ -204,11 +205,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
           </span>
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-          <TeamNameEditor
-            name={state.teamA.name}
-            onSave={(name) => run({ type: "setName", side: "a", name })}
-            align="right"
-          />
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            <TeamNameEditor
+              name={state.teamA.name}
+              onSave={(name) => run({ type: "setName", side: "a", name })}
+              align="right"
+            />
+            <KickerFigure
+              color={state.teamAColor}
+              size={28}
+              className="shrink-0"
+            />
+          </div>
           <div className="text-center">
             <div className="font-display text-5xl tabular-nums text-white">
               {state.teamA.score}
@@ -216,11 +224,18 @@ export function ControlPanel({ roomId, initialState }: Props) {
               {state.teamB.score}
             </div>
           </div>
-          <TeamNameEditor
-            name={state.teamB.name}
-            onSave={(name) => run({ type: "setName", side: "b", name })}
-            align="left"
-          />
+          <div className="flex min-w-0 items-center justify-start gap-2">
+            <KickerFigure
+              color={state.teamBColor}
+              size={28}
+              className="shrink-0"
+            />
+            <TeamNameEditor
+              name={state.teamB.name}
+              onSave={(name) => run({ type: "setName", side: "b", name })}
+              align="left"
+            />
+          </div>
         </div>
         <LiveTimerDisplay state={state} />
       </div>
@@ -253,11 +268,13 @@ export function ControlPanel({ roomId, initialState }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <GoalButton
           label={state.teamA.name}
+          color={state.teamAColor}
           disabled={pending}
           onGoal={() => run({ type: "goal", side: "a", delta: 1 })}
         />
         <GoalButton
           label={state.teamB.name}
+          color={state.teamBColor}
           disabled={pending}
           onGoal={() => run({ type: "goal", side: "b", delta: 1 })}
         />
@@ -627,10 +644,12 @@ function HistoryRow({
 
 function GoalButton({
   label,
+  color,
   onGoal,
   disabled,
 }: {
   label: string;
+  color: MatchState["teamAColor"];
   onGoal: () => void;
   disabled?: boolean;
 }) {
@@ -644,8 +663,9 @@ function GoalButton({
       <span className="font-display text-4xl tracking-wide uppercase">
         Tor +
       </span>
-      <span className="max-w-full truncate text-sm font-sans font-normal normal-case tracking-normal opacity-90">
-        {label}
+      <span className="flex max-w-full items-center justify-center gap-1.5 text-sm font-sans font-normal normal-case tracking-normal opacity-90">
+        <KickerFigure color={color} size={22} className="shrink-0" />
+        <span className="truncate">{label}</span>
       </span>
     </button>
   );

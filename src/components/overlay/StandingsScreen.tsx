@@ -29,7 +29,7 @@ export function StandingsScreen({
       <div className="overlay-glass overlay-glass-accent overflow-hidden">
         <div className="flex items-center justify-between gap-5 border-b border-white/12 px-6 py-5 md:px-8">
           <div className="flex items-center gap-3">
-            <BrandMark size={56} />
+            <BrandMark size={48} />
             <div>
               <div className="text-[0.75rem] tracking-[0.2em] text-[var(--brand-accent)] uppercase">
                 Sätze gesamt

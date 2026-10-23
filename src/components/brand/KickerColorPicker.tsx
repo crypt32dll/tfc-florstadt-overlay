@@ -1,6 +1,6 @@
 "use client";
 
-import { KICKER_COLOR_HEX } from "@/components/overlay/KickerFigure";
+import { KickerFigure } from "@/components/overlay/KickerFigure";
 import { KICKER_COLORS, type KickerColor } from "@/lib/match/schema";
 
 type Props = {
@@ -19,7 +19,7 @@ export function KickerColorPicker({
   return (
     <fieldset className="m-0 min-w-0 border-0 p-0">
       <legend className="sr-only">{label}</legend>
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         {KICKER_COLORS.map((color) => {
           const selected = value === color;
           return (
@@ -30,13 +30,14 @@ export function KickerColorPicker({
               onClick={() => onChange(color)}
               aria-label={color}
               aria-pressed={selected}
-              className={`h-8 w-8 rounded-full border-2 transition-transform ${
+              className={`flex h-11 w-9 items-center justify-center rounded-[var(--radius-control)] border transition-transform ${
                 selected
-                  ? "scale-110 border-[var(--brand-accent)]"
-                  : "border-white/25 hover:border-white/50"
+                  ? "scale-105 border-[var(--brand-accent)] bg-[var(--brand-accent)]/15"
+                  : "border-transparent hover:border-white/30 hover:bg-white/5"
               }`}
-              style={{ backgroundColor: KICKER_COLOR_HEX[color] }}
-            />
+            >
+              <KickerFigure color={color} size={28} />
+            </button>
           );
         })}
       </div>
