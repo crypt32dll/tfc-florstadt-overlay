@@ -49,7 +49,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), create a room, and note the PIN. Open **Preview Lab** on the laptop. Open Control in another tab, or on a phone, and enter the PIN.
+Open [http://localhost:3000](http://localhost:3000) and create a room (PIN is generated automatically). Open **Preview Lab** on the laptop and scan the QR with your phone — Control unlocks via the PIN in the QR link.
 
 > [!IMPORTANT]
 > The in-memory store lives in the Node process. Lab and Control must use the **same host**. On a phone, open the laptop’s LAN address (`http://192.168.x.x:3000`), not `localhost`.

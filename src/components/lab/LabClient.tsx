@@ -67,10 +67,12 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
   const [copied, setCopied] = useState(false);
   const [showPin, setShowPin] = useState(false);
 
-  const controlUrl = useMemo(
-    () => (origin ? `${origin}/control/${roomId}` : ""),
-    [origin, roomId],
-  );
+  const controlUrl = useMemo(() => {
+    if (!origin) return "";
+    const url = new URL(`${origin}/control/${roomId}`);
+    if (pinHint) url.searchParams.set("pin", pinHint);
+    return url.toString();
+  }, [origin, roomId, pinHint]);
   const overlayUrl = useMemo(
     () => (origin ? `${origin}/overlay/live` : ""),
     [origin],
@@ -245,7 +247,9 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
               className="mx-auto"
             />
             <p className="mt-2 text-center text-xs text-black/70">
-              Control auf dem Handy
+              {pinHint
+                ? "Scannen → Control mit PIN"
+                : "Control auf dem Handy (PIN manuell)"}
             </p>
           </div>
         )}

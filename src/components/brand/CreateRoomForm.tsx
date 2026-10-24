@@ -11,7 +11,6 @@ import { createRoomSchema, type KickerColor } from "@/lib/match/schema";
 type FieldErrors = {
   teamA?: string;
   teamB?: string;
-  pin?: string;
 };
 
 export function CreateRoomForm() {
@@ -19,7 +18,6 @@ export function CreateRoomForm() {
   const [teamB, setTeamB] = useState("");
   const [teamAColor, setTeamAColor] = useState<KickerColor>("blue");
   const [teamBColor, setTeamBColor] = useState<KickerColor>("red");
-  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [created, setCreated] = useState<{
@@ -30,7 +28,6 @@ export function CreateRoomForm() {
   const [pending, startTransition] = useTransition();
   const teamARef = useRef<HTMLInputElement>(null);
   const teamBRef = useRef<HTMLInputElement>(null);
-  const pinRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +36,6 @@ export function CreateRoomForm() {
     const parsed = createRoomSchema.safeParse({
       teamA,
       teamB,
-      pin: pin || undefined,
       teamAColor,
       teamBColor,
     });
@@ -48,7 +44,7 @@ export function CreateRoomForm() {
       const next: FieldErrors = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
-        if (key === "teamA" || key === "teamB" || key === "pin") {
+        if (key === "teamA" || key === "teamB") {
           if (!next[key]) next[key] = issue.message;
         }
       }
@@ -57,9 +53,7 @@ export function CreateRoomForm() {
         ? teamARef.current
         : next.teamB
           ? teamBRef.current
-          : next.pin
-            ? pinRef.current
-            : null;
+          : null;
       first?.focus();
       return;
     }
@@ -95,7 +89,7 @@ export function CreateRoomForm() {
           Raum bereit
         </h2>
         <p className="text-sm text-muted">
-          PIN nur jetzt notieren — er wird nicht wieder angezeigt.
+          PIN wird im Lab-QR mitgegeben — Control schaltet sich damit frei.
         </p>
         <div className="space-y-3 rounded-[var(--radius-control)] border border-white/10 bg-black/35 p-4 font-mono text-lg">
           <div className="flex justify-between gap-3 text-sm sm:text-base">
@@ -132,7 +126,7 @@ export function CreateRoomForm() {
             Preview Lab
           </Link>
           <Link
-            href={`/control/${created.roomId}`}
+            href={`/control/${created.roomId}?pin=${encodeURIComponent(created.pin)}`}
             className="btn btn-ghost text-xl"
           >
             Control
@@ -222,34 +216,6 @@ export function CreateRoomForm() {
         </label>
         <KickerColorPicker value={teamBColor} onChange={setTeamBColor} />
       </div>
-      <label className="block space-y-1.5 text-sm text-muted">
-        PIN (optional, sonst automatisch)
-        <input
-          ref={pinRef}
-          name="pin"
-          autoComplete="off"
-          spellCheck={false}
-          inputMode="numeric"
-          value={pin}
-          onChange={(e) => {
-            setPin(e.target.value.replace(/\D/g, "").slice(0, 6));
-            if (fieldErrors.pin) {
-              setFieldErrors((prev) => ({ ...prev, pin: undefined }));
-            }
-          }}
-          placeholder="4–6 Ziffern…"
-          aria-invalid={Boolean(fieldErrors.pin)}
-          aria-describedby={fieldErrors.pin ? "pin-error" : undefined}
-          className={`glass-input text-base tracking-widest text-white ${
-            fieldErrors.pin ? "border-red-400/60" : ""
-          }`}
-        />
-        {fieldErrors.pin && (
-          <p id="pin-error" role="alert" className="text-xs text-red-300">
-            {fieldErrors.pin}
-          </p>
-        )}
-      </label>
 
       {error && (
         <p

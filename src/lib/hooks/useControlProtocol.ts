@@ -13,52 +13,97 @@ import type { MatchState, RoomMutation } from "@/lib/match/types";
 
 const log = clientLog("control");
 
+function pinFromLocation(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("pin");
+  if (!raw) return null;
+  const clean = raw.replace(/\D/g, "");
+  return clean.length >= 4 && clean.length <= 6 ? clean : null;
+}
+
+function stripPinFromUrl() {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("pin")) return;
+  url.searchParams.delete("pin");
+  window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
 export function useControlSession(roomId: string) {
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
   const pinSubmitting = useRef(false);
+  const autoPinTried = useRef(false);
+
+  const submitPin = useCallback(
+    async (rawPin: string) => {
+      if (pinSubmitting.current) return false;
+
+      const cleanPin = rawPin.replace(/\D/g, "");
+      if (cleanPin.length < 4 || cleanPin.length > 6) {
+        setAuthError("PIN muss 4–6 Ziffern haben.");
+        return false;
+      }
+
+      pinSubmitting.current = true;
+      setPinLoading(true);
+      setAuthError(null);
+      try {
+        const res = await verifyRoomPin({ roomId, pin: cleanPin });
+        if (!res.ok) {
+          setAuthError(actionErrorMessage(res));
+          log.warn("PIN failed", res.code);
+          return false;
+        }
+        setAuthorized(true);
+        setPin("");
+        stripPinFromUrl();
+        return true;
+      } catch (err) {
+        log.error("PIN network error", err);
+        setAuthError(
+          err instanceof Error
+            ? err.message
+            : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
+        );
+        return false;
+      } finally {
+        pinSubmitting.current = false;
+        setPinLoading(false);
+      }
+    },
+    [roomId],
+  );
 
   useEffect(() => {
-    void checkControlAuth(roomId).then((res) => {
-      if (res.ok) setAuthorized(res.data.authorized);
-    });
-  }, [roomId]);
+    autoPinTried.current = false;
+    let cancelled = false;
+    void (async () => {
+      const res = await checkControlAuth(roomId);
+      if (cancelled) return;
+      if (res.ok && res.data.authorized) {
+        setAuthorized(true);
+        stripPinFromUrl();
+        return;
+      }
+
+      const fromQuery = pinFromLocation();
+      if (fromQuery && !autoPinTried.current) {
+        autoPinTried.current = true;
+        setPin(fromQuery);
+        await submitPin(fromQuery);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId, submitPin]);
 
   const onPinSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (pinSubmitting.current || pinLoading) return;
-
-    const cleanPin = pin.replace(/\D/g, "");
-    if (cleanPin.length < 4 || cleanPin.length > 6) {
-      setAuthError("PIN muss 4–6 Ziffern haben.");
-      return;
-    }
-
-    pinSubmitting.current = true;
-    setPinLoading(true);
-    setAuthError(null);
-    try {
-      const res = await verifyRoomPin({ roomId, pin: cleanPin });
-      if (!res.ok) {
-        setAuthError(actionErrorMessage(res));
-        log.warn("PIN failed", res.code);
-        return;
-      }
-      setAuthorized(true);
-      setPin("");
-    } catch (err) {
-      log.error("PIN network error", err);
-      setAuthError(
-        err instanceof Error
-          ? err.message
-          : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
-      );
-    } finally {
-      pinSubmitting.current = false;
-      setPinLoading(false);
-    }
+    await submitPin(pin);
   };
 
   return {
