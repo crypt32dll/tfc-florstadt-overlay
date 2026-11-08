@@ -38,20 +38,17 @@ export const teamNameSchema = z
   .max(32, "Maximal 32 Zeichen");
 
 export const createRoomSchema = z.object({
-  pin: z
-    .string()
-    .regex(/^\d{4,6}$/, "PIN muss 4–6 Ziffern haben")
-    .optional(),
   teamA: z
     .string()
     .trim()
     .min(1, "Team A: Name eingeben")
-    .max(32, "Team A: Maximal 32 Zeichen"),
+    .max(32, "Team A: Maximal 32 Zeichen")
+    .default("TFC Florstadt"),
   teamB: z
     .string()
     .trim()
-    .min(1, "Team B: Name eingeben")
-    .max(32, "Team B: Maximal 32 Zeichen"),
+    .min(1, "Gegner: Name eingeben")
+    .max(32, "Gegner: Maximal 32 Zeichen"),
   teamAColor: kickerColorSchema.optional(),
   teamBColor: kickerColorSchema.optional(),
 });
@@ -79,6 +76,14 @@ export const mutationSchema = z.discriminatedUnion("type", [
     action: z.enum(["start", "pause", "reset"]),
   }),
   z.object({ type: z.literal("resetMatch") }),
+  z.object({
+    type: z.literal("newMatch"),
+    teamA: z.string().trim().min(1).max(32).optional(),
+    teamB: z.string().trim().min(1).max(32),
+    teamAColor: kickerColorSchema.optional(),
+    teamBColor: kickerColorSchema.optional(),
+    matchFormat: matchFormatSchema.optional(),
+  }),
   z.object({ type: z.literal("finishMatch") }),
   z.object({ type: z.literal("finishSet") }),
   z.object({

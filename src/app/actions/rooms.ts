@@ -4,7 +4,8 @@ import { customAlphabet } from "nanoid";
 import { headers } from "next/headers";
 import { ZodError } from "zod";
 import { type ActionResult, actionFail, actionOk } from "@/lib/action/result";
-import { generatePin, hashPin, verifyPin } from "@/lib/auth/pin";
+import { getControlPin } from "@/lib/auth/control-pin";
+import { hashPin } from "@/lib/auth/pin";
 import { checkPinRateLimit } from "@/lib/auth/rate-limit";
 import {
   assertRoomAuthorized,
@@ -28,7 +29,6 @@ const log = actionLog("rooms");
 export type { ActionResult } from "@/lib/action/result";
 
 export async function createRoom(input?: {
-  pin?: string;
   teamA?: string;
   teamB?: string;
   teamAColor?: string;
@@ -41,14 +41,13 @@ export async function createRoom(input?: {
   }>
 > {
   try {
+    const pin = getControlPin();
     const parsed = createRoomSchema.parse({
-      pin: input?.pin,
-      teamA: input?.teamA ?? "",
+      teamA: input?.teamA ?? "TFC Florstadt",
       teamB: input?.teamB ?? "",
       teamAColor: input?.teamAColor,
       teamBColor: input?.teamBColor,
     });
-    const pin = parsed.pin ?? generatePin(4);
     const id = roomId();
     const store = await getStore();
     const state = createInitialState(parsed.teamA, parsed.teamB, {
@@ -118,8 +117,14 @@ export async function verifyRoomPin(input: {
     const room = await store.get(parsed.roomId);
     if (!room) return actionFail("NOT_FOUND");
 
-    const valid = await verifyPin(parsed.pin, room.pinHash);
-    if (!valid) {
+    // Option A: one club PIN for every room (env), not per-room random PIN
+    let expected: string;
+    try {
+      expected = getControlPin();
+    } catch {
+      return actionFail("UNKNOWN", "CONTROL_PIN ist nicht konfiguriert");
+    }
+    if (parsed.pin !== expected) {
       log.warn("PIN rejected", { roomId: parsed.roomId, ip });
       return actionFail("UNAUTHORIZED", "Falscher PIN");
     }

@@ -8,6 +8,7 @@ import {
   verifyRoomPin,
 } from "@/app/actions/rooms";
 import { actionErrorMessage } from "@/lib/action/result";
+import { getPublicControlPin } from "@/lib/auth/control-pin";
 import { clientLog } from "@/lib/logger.client";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
 
@@ -29,56 +30,59 @@ function stripPinFromUrl() {
   window.history.replaceState({}, "", url.pathname + url.search + url.hash);
 }
 
+function resolveAutoPin(): string | null {
+  return pinFromLocation() ?? getPublicControlPin();
+}
+
 export function useControlSession(roomId: string) {
   const [authorized, setAuthorized] = useState(false);
   const [pin, setPin] = useState("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [pinLoading, setPinLoading] = useState(false);
+  const [autoUnlocking, setAutoUnlocking] = useState(true);
   const pinSubmitting = useRef(false);
   const autoPinTried = useRef(false);
 
-  const submitPin = useCallback(
-    async (rawPin: string) => {
-      if (pinSubmitting.current) return false;
+  const submitPin = useCallback(async (rawPin: string) => {
+    if (pinSubmitting.current) return false;
 
-      const cleanPin = rawPin.replace(/\D/g, "");
-      if (cleanPin.length < 4 || cleanPin.length > 6) {
-        setAuthError("PIN muss 4–6 Ziffern haben.");
+    const cleanPin = rawPin.replace(/\D/g, "");
+    if (cleanPin.length < 4 || cleanPin.length > 6) {
+      setAuthError("PIN muss 4–6 Ziffern haben.");
+      return false;
+    }
+
+    pinSubmitting.current = true;
+    setPinLoading(true);
+    setAuthError(null);
+    try {
+      const res = await verifyRoomPin({ roomId, pin: cleanPin });
+      if (!res.ok) {
+        setAuthError(actionErrorMessage(res));
+        log.warn("PIN failed", res.code);
         return false;
       }
-
-      pinSubmitting.current = true;
-      setPinLoading(true);
-      setAuthError(null);
-      try {
-        const res = await verifyRoomPin({ roomId, pin: cleanPin });
-        if (!res.ok) {
-          setAuthError(actionErrorMessage(res));
-          log.warn("PIN failed", res.code);
-          return false;
-        }
-        setAuthorized(true);
-        setPin("");
-        stripPinFromUrl();
-        return true;
-      } catch (err) {
-        log.error("PIN network error", err);
-        setAuthError(
-          err instanceof Error
-            ? err.message
-            : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
-        );
-        return false;
-      } finally {
-        pinSubmitting.current = false;
-        setPinLoading(false);
-      }
-    },
-    [roomId],
-  );
+      setAuthorized(true);
+      setPin("");
+      stripPinFromUrl();
+      return true;
+    } catch (err) {
+      log.error("PIN network error", err);
+      setAuthError(
+        err instanceof Error
+          ? err.message
+          : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
+      );
+      return false;
+    } finally {
+      pinSubmitting.current = false;
+      setPinLoading(false);
+    }
+  }, [roomId]);
 
   useEffect(() => {
     autoPinTried.current = false;
+    setAutoUnlocking(true);
     let cancelled = false;
     void (async () => {
       const res = await checkControlAuth(roomId);
@@ -86,15 +90,26 @@ export function useControlSession(roomId: string) {
       if (res.ok && res.data.authorized) {
         setAuthorized(true);
         stripPinFromUrl();
+        setAutoUnlocking(false);
         return;
       }
 
-      const fromQuery = pinFromLocation();
-      if (fromQuery && !autoPinTried.current) {
+      const autoPin = resolveAutoPin();
+      if (autoPin && !autoPinTried.current) {
         autoPinTried.current = true;
-        setPin(fromQuery);
-        await submitPin(fromQuery);
+        setPin(autoPin);
+        const ok = await submitPin(autoPin);
+        if (cancelled) return;
+        if (!ok) {
+          // Keep PIN field filled for manual retry; show form
+          setAutoUnlocking(false);
+        } else {
+          setAutoUnlocking(false);
+        }
+        return;
       }
+
+      setAutoUnlocking(false);
     })();
     return () => {
       cancelled = true;
@@ -114,6 +129,7 @@ export function useControlSession(roomId: string) {
     authError,
     setAuthError,
     pinLoading,
+    autoUnlocking,
     onPinSubmit,
   };
 }

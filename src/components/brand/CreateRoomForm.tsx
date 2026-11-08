@@ -6,12 +6,8 @@ import { createRoom } from "@/app/actions/rooms";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { KickerColorPicker } from "@/components/brand/KickerColorPicker";
 import { actionErrorMessage } from "@/lib/action/result";
+import { getPublicControlPin } from "@/lib/auth/control-pin";
 import { createRoomSchema, type KickerColor } from "@/lib/match/schema";
-
-type FieldErrors = {
-  teamA?: string;
-  teamB?: string;
-};
 
 export function CreateRoomForm() {
   const [teamA, setTeamA] = useState("TFC Florstadt");
@@ -19,69 +15,46 @@ export function CreateRoomForm() {
   const [teamAColor, setTeamAColor] = useState<KickerColor>("blue");
   const [teamBColor, setTeamBColor] = useState<KickerColor>("red");
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [created, setCreated] = useState<{
-    roomId: string;
-    pin: string;
-  } | null>(null);
-  const [pinCopied, setPinCopied] = useState(false);
+  const [teamBError, setTeamBError] = useState<string | undefined>();
+  const [created, setCreated] = useState<{ roomId: string } | null>(null);
   const [pending, startTransition] = useTransition();
-  const teamARef = useRef<HTMLInputElement>(null);
   const teamBRef = useRef<HTMLInputElement>(null);
+  const publicPin = getPublicControlPin();
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     const parsed = createRoomSchema.safeParse({
-      teamA,
+      teamA: teamA.trim() || "TFC Florstadt",
       teamB,
       teamAColor,
       teamBColor,
     });
 
     if (!parsed.success) {
-      const next: FieldErrors = {};
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0];
-        if (key === "teamA" || key === "teamB") {
-          if (!next[key]) next[key] = issue.message;
-        }
-      }
-      setFieldErrors(next);
-      const first = next.teamA
-        ? teamARef.current
-        : next.teamB
-          ? teamBRef.current
-          : null;
-      first?.focus();
+      const issue = parsed.error.issues.find((i) => i.path[0] === "teamB");
+      setTeamBError(issue?.message ?? "Gegner eingeben");
+      teamBRef.current?.focus();
       return;
     }
 
-    setFieldErrors({});
+    setTeamBError(undefined);
     startTransition(async () => {
       const res = await createRoom(parsed.data);
       if (!res.ok) {
         setError(actionErrorMessage(res));
         return;
       }
-      setCreated({ roomId: res.data.roomId, pin: res.data.pin });
+      setCreated({ roomId: res.data.roomId });
       sessionStorage.setItem(`tfc-pin-${res.data.roomId}`, res.data.pin);
     });
   };
 
-  const copyPin = async () => {
-    if (!created) return;
-    try {
-      await navigator.clipboard.writeText(created.pin);
-      setPinCopied(true);
-      window.setTimeout(() => setPinCopied(false), 2000);
-    } catch {
-      setPinCopied(false);
-    }
-  };
-
   if (created) {
+    const controlHref = publicPin
+      ? `/control/live?pin=${encodeURIComponent(publicPin)}`
+      : `/control/live`;
     return (
       <div className="glass-panel-strong mx-auto w-full max-w-lg space-y-6 p-5 sm:p-6">
         <p className="badge-live w-fit">Bereit</p>
@@ -89,33 +62,16 @@ export function CreateRoomForm() {
           Raum bereit
         </h2>
         <p className="text-sm text-muted">
-          PIN wird im Lab-QR mitgegeben — Control schaltet sich damit frei.
+          Control immer unter{" "}
+          <code className="text-[var(--brand-accent)]">/control/live</code> —
+          fester Club-PIN, Lab-QR schaltet frei.
         </p>
-        <div className="space-y-3 rounded-[var(--radius-control)] border border-white/10 bg-black/35 p-4 font-mono text-lg">
-          <div className="flex justify-between gap-3 text-sm sm:text-base">
+        <div className="rounded-[var(--radius-control)] border border-white/10 bg-black/35 p-4 font-mono text-sm">
+          <div className="flex justify-between gap-3">
             <span className="text-muted">Raum</span>
             <strong className="text-white" translate="no">
               {created.roomId}
             </strong>
-          </div>
-          <div className="h-px bg-white/10" />
-          <div className="flex items-center justify-between gap-3 text-sm sm:text-base">
-            <span className="text-muted">PIN</span>
-            <div className="flex items-center gap-2">
-              <strong
-                className="tracking-[0.35em] text-[var(--brand-accent)]"
-                translate="no"
-              >
-                {created.pin}
-              </strong>
-              <button
-                type="button"
-                onClick={() => void copyPin()}
-                className="btn btn-ghost min-h-11 min-w-11 px-3 text-sm normal-case tracking-normal"
-              >
-                {pinCopied ? "Kopiert" : "Kopieren"}
-              </button>
-            </div>
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -125,10 +81,7 @@ export function CreateRoomForm() {
           >
             Preview Lab
           </Link>
-          <Link
-            href={`/control/${created.roomId}?pin=${encodeURIComponent(created.pin)}`}
-            className="btn btn-ghost text-xl"
-          >
+          <Link href={controlHref} className="btn btn-ghost text-xl">
             Control
           </Link>
         </div>
@@ -155,41 +108,33 @@ export function CreateRoomForm() {
           Stream Overlay
         </h1>
         <p className="text-sm text-muted">
-          Raum erstellen, im Lab testen, später in OBS einbinden.
+          Gegner eintragen — Heim ist TFC Florstadt, wenn leer. PIN ist
+          clubweit fest.
         </p>
       </div>
 
       <div className="space-y-1.5">
         <label className="block space-y-1.5 text-sm text-muted">
-          Team A
+          Heim
           <input
-            ref={teamARef}
             name="teamA"
-            autoComplete="organization"
+            autoComplete="off"
             value={teamA}
-            onChange={(e) => {
-              setTeamA(e.target.value);
-              if (fieldErrors.teamA) {
-                setFieldErrors((prev) => ({ ...prev, teamA: undefined }));
-              }
-            }}
-            aria-invalid={Boolean(fieldErrors.teamA)}
-            aria-describedby={fieldErrors.teamA ? "teamA-error" : undefined}
-            className={`glass-input text-base text-white ${
-              fieldErrors.teamA ? "border-red-400/60" : ""
-            }`}
+            onChange={(e) => setTeamA(e.target.value)}
+            placeholder="TFC Florstadt"
+            className="glass-input text-base text-white"
           />
-          {fieldErrors.teamA && (
-            <p id="teamA-error" role="alert" className="text-xs text-red-300">
-              {fieldErrors.teamA}
-            </p>
-          )}
         </label>
-        <KickerColorPicker value={teamAColor} onChange={setTeamAColor} />
+        <KickerColorPicker
+          value={teamAColor}
+          onChange={setTeamAColor}
+          label="Farbe Heim"
+        />
       </div>
+
       <div className="space-y-1.5">
         <label className="block space-y-1.5 text-sm text-muted">
-          Team B
+          Gegner
           <input
             ref={teamBRef}
             name="teamB"
@@ -197,24 +142,26 @@ export function CreateRoomForm() {
             value={teamB}
             onChange={(e) => {
               setTeamB(e.target.value);
-              if (fieldErrors.teamB) {
-                setFieldErrors((prev) => ({ ...prev, teamB: undefined }));
-              }
+              if (teamBError) setTeamBError(undefined);
             }}
-            placeholder="Gegner…"
-            aria-invalid={Boolean(fieldErrors.teamB)}
-            aria-describedby={fieldErrors.teamB ? "teamB-error" : undefined}
+            placeholder="Teamname…"
+            aria-invalid={Boolean(teamBError)}
+            aria-describedby={teamBError ? "teamB-error" : undefined}
             className={`glass-input text-base text-white ${
-              fieldErrors.teamB ? "border-red-400/60" : ""
+              teamBError ? "border-red-400/60" : ""
             }`}
           />
-          {fieldErrors.teamB && (
+          {teamBError && (
             <p id="teamB-error" role="alert" className="text-xs text-red-300">
-              {fieldErrors.teamB}
+              {teamBError}
             </p>
           )}
         </label>
-        <KickerColorPicker value={teamBColor} onChange={setTeamBColor} />
+        <KickerColorPicker
+          value={teamBColor}
+          onChange={setTeamBColor}
+          label="Farbe Gegner"
+        />
       </div>
 
       {error && (
@@ -231,7 +178,7 @@ export function CreateRoomForm() {
         disabled={pending}
         className="btn btn-primary w-full text-2xl"
       >
-        {pending ? "Erstelle…" : "Raum erstellen"}
+        {pending ? "Erstelle…" : "Match starten"}
       </button>
     </form>
   );

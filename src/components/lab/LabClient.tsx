@@ -3,54 +3,16 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { OverlayShell } from "@/components/overlay/OverlayShell";
+import { getPublicControlPin } from "@/lib/auth/control-pin";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { MatchState } from "@/lib/match/types";
 
 type Props = {
   roomId: string;
   initialState: MatchState;
+  /** @deprecated PIN is club-wide via NEXT_PUBLIC_CONTROL_PIN; kept for API compat */
   pinHint?: string | null;
 };
-
-function EyeIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffIcon() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M3 3l18 18" />
-      <path d="M10.6 10.6a3 3 0 0 0 4.2 4.2" />
-      <path d="M9.9 5.1A10.6 10.6 0 0 1 12 5c6.5 0 10 7 10 7a17.4 17.4 0 0 1-3.2 4.4" />
-      <path d="M6.1 6.1C3.9 7.6 2 12 2 12s3.5 7 10 7a10.6 10.6 0 0 0 4.1-.8" />
-    </svg>
-  );
-}
 
 export function LabClient({ roomId, initialState, pinHint }: Props) {
   const { state, replaceState, refresh, connected } = useRoomState(
@@ -65,14 +27,15 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
     () => "",
   );
   const [copied, setCopied] = useState(false);
-  const [showPin, setShowPin] = useState(false);
+  const controlPin = getPublicControlPin() ?? pinHint ?? null;
 
   const controlUrl = useMemo(() => {
     if (!origin) return "";
-    const url = new URL(`${origin}/control/${roomId}`);
-    if (pinHint) url.searchParams.set("pin", pinHint);
+    const url = new URL(`${origin}/control/live`);
+    if (controlPin) url.searchParams.set("pin", controlPin);
     return url.toString();
-  }, [origin, roomId, pinHint]);
+  }, [origin, controlPin]);
+
   const overlayUrl = useMemo(
     () => (origin ? `${origin}/overlay/live` : ""),
     [origin],
@@ -146,7 +109,7 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
             Preview Lab
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Test ohne Twitch &amp; OBS. Handy scannen → Control.
+            Test ohne Twitch &amp; OBS. Handy-QR → Control.
           </p>
         </div>
 
@@ -175,38 +138,6 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
               )}
             </dd>
           </div>
-          {pinHint && (
-            <div className="space-y-1">
-              <div className="flex items-center justify-between gap-2">
-                <dt className="text-muted">PIN</dt>
-                <dd className="flex items-center justify-end gap-1">
-                  <span
-                    id="lab-pin-value"
-                    className="font-mono tracking-widest text-white tabular-nums"
-                    translate="no"
-                  >
-                    {showPin ? pinHint : "••••"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPin((v) => !v)}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-[var(--radius-control)] text-muted transition-colors hover:bg-white/10 hover:text-white"
-                    aria-label={showPin ? "PIN verbergen" : "PIN anzeigen"}
-                    aria-pressed={showPin}
-                    aria-describedby="lab-pin-hint"
-                  >
-                    {showPin ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </dd>
-              </div>
-              <p
-                id="lab-pin-hint"
-                className="text-right text-[0.7rem] text-amber-200/90"
-              >
-                Nicht auf Stream/Kamera zeigen.
-              </p>
-            </div>
-          )}
         </dl>
 
         {!connected && (
@@ -247,9 +178,7 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
               className="mx-auto"
             />
             <p className="mt-2 text-center text-xs text-black/70">
-              {pinHint
-                ? "Scannen → Control mit PIN"
-                : "Control auf dem Handy (PIN manuell)"}
+              Scannen → /control/live
             </p>
           </div>
         )}
@@ -269,17 +198,12 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
 
         <section className="border-t border-white/10 pt-4 text-xs text-muted">
           <h2 className="font-display text-lg tracking-wide text-white uppercase">
-            OBS Checkliste
+            Checkliste
           </h2>
           <ol className="mt-2 list-decimal space-y-1.5 pl-4">
-            <li>
-              Browser Source 1920×1080, feste URL{" "}
-              <code className="text-[var(--brand-accent)]">/overlay/live</code>
-            </li>
-            <li>„Shutdown when not visible“ aus</li>
-            <li>
-              Audio der Browser Source an – dann im Control „Sound testen“
-            </li>
+            <li>QR mit dem Handy scannen</li>
+            <li>Tore &amp; Screens im Control testen</li>
+            <li>OBS: Browser-Quelle → /overlay/live</li>
           </ol>
         </section>
       </aside>

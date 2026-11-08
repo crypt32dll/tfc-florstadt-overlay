@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { KickerColorPicker } from "@/components/brand/KickerColorPicker";
 import { ConfirmSheet } from "@/components/control/ConfirmSheet";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
 import {
@@ -91,10 +92,28 @@ export function ControlPanel({ roomId, initialState }: Props) {
   );
 
   const authError = mutationError ?? session.authError;
-  const { authorized, pin, setPin, setAuthError, pinLoading, onPinSubmit } =
-    session;
-
+  const {
+    authorized,
+    pin,
+    setPin,
+    setAuthError,
+    pinLoading,
+    autoUnlocking,
+    onPinSubmit,
+  } = session;
   if (!authorized) {
+    if (autoUnlocking || pinLoading) {
+      return (
+        <div className="app-shell flex min-h-dvh flex-col items-center justify-center gap-4 px-5">
+          <BrandMark size={96} priority className="drop-shadow-lg" />
+          <p className="font-display text-3xl tracking-wide text-white uppercase">
+            Schalte frei…
+          </p>
+          <p className="text-sm text-muted">Club-PIN wird geprüft</p>
+        </div>
+      );
+    }
+
     return (
       <div className="app-shell flex min-h-dvh flex-col px-5 pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 pb-36">
@@ -105,7 +124,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
                 Control
               </h1>
               <p className="text-sm text-muted">
-                PIN eingeben, um Tore und Screens zu steuern.
+                Club-PIN eingeben (oder Lab-QR scannen).
               </p>
             </div>
             <form
@@ -302,7 +321,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <GoalButton
           label={state.teamA.name}
           color={state.teamAColor}
@@ -335,6 +354,12 @@ export function ControlPanel({ roomId, initialState }: Props) {
         />
       </div>
 
+      <ViewSwitcher
+        active={state.activeView}
+        pending={pending}
+        onSelect={(view) => run({ type: "setView", view })}
+      />
+
       <div className="grid grid-cols-3 gap-2">
         <SmallBtn
           disabled={pending || state.timer.running}
@@ -356,12 +381,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
         </SmallBtn>
       </div>
 
-      <ViewSwitcher
-        active={state.activeView}
-        pending={pending}
-        onSelect={(view) => run({ type: "setView", view })}
-      />
-
       {state.activeView === "transition" && (
         <button
           type="button"
@@ -374,7 +393,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
               refresh,
             }).finally(() => setTransitionBusy(false));
           }}
-          className="btn btn-primary sticky bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 w-full text-lg shadow-lg"
+          className="btn btn-primary w-full text-lg shadow-lg"
         >
           {transitionBusy ? "Schließe Transition…" : "Transition abschließen"}
         </button>
@@ -540,6 +559,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
         Normal: bis 5 (auch 5:4) · Entscheidungssatz: 2 Vorsprung, max. 8:7 ·
         Lineup 2D–2E–2D–2E–2D
       </p>
+
     </div>
   );
 }
@@ -696,25 +716,37 @@ function GoalButton({
   color,
   onGoal,
   busy,
+  compact,
 }: {
   label: string;
   color: MatchState["teamAColor"];
   onGoal: () => void;
   /** Visual busy only — Tor+ stays tappable so rapid goals aren't blocked. */
   busy?: boolean;
+  compact?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-busy={busy}
       onClick={onGoal}
-      className="btn btn-primary min-h-28 flex-col gap-1 px-2 py-4 text-white"
+      className={`btn btn-primary flex-col gap-0.5 px-2 text-white ${
+        compact ? "min-h-14 py-2" : "min-h-28 py-4"
+      }`}
     >
-      <span className="font-display text-4xl tracking-wide uppercase">
+      <span
+        className={`font-display tracking-wide uppercase ${
+          compact ? "text-2xl" : "text-4xl"
+        }`}
+      >
         Tor +
       </span>
-      <span className="flex max-w-full items-center justify-center gap-1.5 text-sm font-sans font-normal normal-case tracking-normal opacity-90">
-        <KickerFigure color={color} size={22} className="shrink-0" />
+      <span className="flex max-w-full items-center justify-center gap-1.5 text-xs font-sans font-normal normal-case tracking-normal opacity-90 sm:text-sm">
+        <KickerFigure
+          color={color}
+          size={compact ? 18 : 22}
+          className="shrink-0"
+        />
         <span className="truncate">{label}</span>
       </span>
     </button>
@@ -738,12 +770,14 @@ function UndoGoalButton({
       disabled={disabled}
       onClick={onClick}
       aria-label={`Tor zurücknehmen ${label}`}
-      className="btn btn-ghost flex min-h-12 items-center justify-center gap-1.5 px-2 py-3 text-base"
+      className="btn btn-ghost flex min-h-16 flex-col items-center justify-center gap-0.5 px-2 py-2"
     >
-      <span className="font-display text-xl leading-none">−</span>
-      <KickerFigure color={color} size={20} className="shrink-0" />
-      <span className="max-w-[4.5rem] truncate text-sm font-sans font-normal normal-case tracking-normal">
-        {label}
+      <span className="font-display text-xl leading-none tracking-wide uppercase">
+        Tor −
+      </span>
+      <span className="flex max-w-full items-center justify-center gap-1 text-xs font-sans font-normal normal-case tracking-normal opacity-90">
+        <KickerFigure color={color} size={18} className="shrink-0" />
+        <span className="truncate">{label}</span>
       </span>
     </button>
   );
@@ -781,7 +815,7 @@ function ViewSwitcher({
 }) {
   const views: DestinationView[] = [...DESTINATION_VIEWS];
   const labels: Record<DestinationView, string> = {
-    startingSoon: "Soon",
+    startingSoon: "Bald",
     live: "Live",
     standings: "Stand",
     brb: "BRB",

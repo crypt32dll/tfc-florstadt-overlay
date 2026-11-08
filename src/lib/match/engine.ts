@@ -241,6 +241,27 @@ export function applyMutation(
         transitionTo: null,
       });
     }
+    case "newMatch": {
+      return bump({
+        ...state,
+        teamA: {
+          name: mutation.teamA?.trim() || state.teamA.name,
+          score: 0,
+        },
+        teamB: { name: mutation.teamB.trim(), score: 0 },
+        teamAColor: mutation.teamAColor ?? state.teamAColor,
+        teamBColor: mutation.teamBColor ?? state.teamBColor,
+        matchFormat: mutation.matchFormat ?? state.matchFormat,
+        sets: { a: 0, b: 0 },
+        lineupIndex: 0,
+        gameType: GAME_LINEUP[0],
+        sessionWins: { a: 0, b: 0 },
+        history: [],
+        timer: { running: false, startedAt: null, elapsedMs: 0 },
+        activeView: "startingSoon",
+        transitionTo: null,
+      });
+    }
     case "finishMatch": {
       // End current game with current set score (manual)
       return bump(completeGame(state));

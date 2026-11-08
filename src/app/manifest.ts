@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "TFC Overlay",
     description:
       "Twitch/OBS Overlay für den Tischfußball Club Florstadt – Scoreboard, Timer, Control & Preview Lab.",
-    start_url: "/",
+    start_url: "/control/live",
     display: "standalone",
     orientation: "portrait",
     background_color: "#05080f",

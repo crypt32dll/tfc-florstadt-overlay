@@ -62,28 +62,28 @@ export function StartingSoonScreen({
         </p>
       </motion.div>
 
-      <div className="overlay-glass overlay-glass-accent relative mt-8 w-full max-w-3xl shrink-0 px-6 py-5 md:mt-10 md:px-10 md:py-6">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-5 md:gap-x-8">
-          <div className="flex min-w-0 items-center justify-end gap-2">
-            <div className="overlay-score truncate text-4xl md:text-5xl">
+      <div className="overlay-glass overlay-glass-accent relative mt-8 w-[min(1680px,92%)] shrink-0 px-8 py-6 md:mt-10 md:px-12 md:py-7">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-6 md:gap-x-10">
+          <div className="flex min-w-0 items-center justify-end gap-3">
+            <div className="overlay-score max-w-full text-right text-4xl leading-tight text-balance md:text-5xl lg:text-6xl">
               {state.teamA.name}
             </div>
             <KickerFigure
               color={state.teamAColor}
-              size={36}
+              size={40}
               className="shrink-0"
             />
           </div>
-          <div className="overlay-score flex size-14 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-2xl leading-none text-white/70">
+          <div className="overlay-score flex size-16 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-2xl leading-none text-white/70">
             VS
           </div>
-          <div className="flex min-w-0 items-center justify-start gap-2">
+          <div className="flex min-w-0 items-center justify-start gap-3">
             <KickerFigure
               color={state.teamBColor}
-              size={36}
+              size={40}
               className="shrink-0"
             />
-            <div className="overlay-score truncate text-4xl md:text-5xl">
+            <div className="overlay-score max-w-full text-left text-4xl leading-tight text-balance md:text-5xl lg:text-6xl">
               {state.teamB.name}
             </div>
           </div>
