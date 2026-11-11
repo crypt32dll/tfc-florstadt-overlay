@@ -28,9 +28,10 @@ export function LiveOverlayClient({ initialRoomId, initialState }: Props) {
         setBootState(res.data.state);
       }
     };
+    // Pointer check only — room state rides realtime/poll. 15s keeps Fluid CPU down.
     const id = window.setInterval(() => {
       void tick();
-    }, 5000);
+    }, 15_000);
     return () => {
       cancelled = true;
       window.clearInterval(id);

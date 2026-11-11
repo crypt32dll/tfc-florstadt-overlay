@@ -16,7 +16,7 @@ export type RoomStore = {
     expectedRevision: number,
   ): Promise<SaveIfRevisionResult>;
   deleteOlderThan(olderThanMs: number): Promise<number>;
-  /** Lightweight read used by keep-alive cron to touch Supabase / count rooms. */
+  /** Lightweight room count (cleanup cron / ops). */
   countRooms(): Promise<number>;
   /** Stable OBS master URL resolves to this room (latest created). */
   getLiveRoomId(): Promise<string | null>;

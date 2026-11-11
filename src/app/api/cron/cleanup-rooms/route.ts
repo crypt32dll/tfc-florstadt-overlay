@@ -26,9 +26,11 @@ export async function GET(request: NextRequest) {
 
   try {
     const store = await getStore();
+    // Touches Supabase once daily — doubles as keep-alive (no separate ping cron).
+    const rooms = await store.countRooms();
     const deleted = await store.deleteOlderThan(MAX_AGE_MS);
-    log.info("cleanup ok", { deleted });
-    return cronOk({ deleted, maxAgeDays: MAX_AGE_DAYS });
+    log.info("cleanup ok", { rooms, deleted });
+    return cronOk({ rooms, deleted, maxAgeDays: MAX_AGE_DAYS });
   } catch (e) {
     log.error("cleanup crashed", e);
     return cronError(e);

@@ -127,9 +127,10 @@ export function useRoomState(
               setConnected(false);
               log.warn("realtime status", status, roomId);
               if (!pollTimer) {
+                // Fallback only when realtime drops — keep Fluid CPU low.
                 pollTimer = setInterval(() => {
                   void pollOnce();
-                }, 1500);
+                }, 2500);
               }
             }
           });
@@ -137,9 +138,10 @@ export function useRoomState(
       }
 
       setConnected(true);
+      // Memory-store fallback (no Supabase): ~1 Hz is enough for OBS; 400ms burned Fluid CPU.
       pollTimer = setInterval(() => {
         void pollOnce();
-      }, 400);
+      }, 1000);
     }
 
     void boot();

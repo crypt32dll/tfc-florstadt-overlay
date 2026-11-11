@@ -90,8 +90,7 @@ Leave the Supabase variables empty for the in-memory store.
 
 | Cron                      | Schedule     | Purpose                                |
 | ------------------------- | ------------ | -------------------------------------- |
-| `/api/cron/keep-alive`    | `0 8 * * *`  | Daily database ping                    |
-| `/api/cron/cleanup-rooms` | `30 8 * * *` | Delete rooms idle for more than 7 days |
+| `/api/cron/cleanup-rooms` | `0 8 * * *` | Delete rooms idle >7d (also keeps Supabase awake) |
 
 Deploy to Vercel, set `CRON_SECRET`, and confirm the jobs under **Project → Settings → Cron Jobs**. Vercel sends `Authorization: Bearer <CRON_SECRET>`.
 
