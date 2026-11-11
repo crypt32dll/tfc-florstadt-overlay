@@ -1,11 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
+  "fluid": false,
   "skipMiddlewareRequestBody": true,
-  "crons": [
-    {
-      "path": "/api/cron/cleanup-rooms",
-      "schedule": "0 8 * * *"
-    }
-  ]
+  "crons": []
 }
