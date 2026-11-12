@@ -79,20 +79,20 @@ Use Supabase when more than one machine must share a room, or when you deploy.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Realtime read of `id`, `state`, `updated_at`                                                                                  |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Server-only writes                                                                                                            |
 | `ROOM_SESSION_SECRET`           | Signs the Control session. At least 32 characters in production                                                               |
-| `CRON_SECRET`                   | Authorizes the Vercel cron routes. At least 16 characters                                                                     |
+| `CRON_SECRET`                   | Authorizes `/api/cron/*` (GitHub Actions cron). At least 16 characters                                                        |
 | `NEXT_PUBLIC_SITE_URL`          | Optional canonical origin for OG/share links (e.g. `https://overlay.example.com`). On Vercel, production URL is used if unset |
 
 Leave the Supabase variables empty for the in-memory store.
 
 ### Keep the free project awake
 
-[`vercel.json`](vercel.json) schedules two jobs (UTC):
+GitHub Actions [`.github/workflows/cron.yml`](.github/workflows/cron.yml) calls the cleanup route daily (08:00 UTC):
 
-| Cron                      | Schedule     | Purpose                                |
-| ------------------------- | ------------ | -------------------------------------- |
+| Route                     | Schedule    | Purpose                                           |
+| ------------------------- | ----------- | ------------------------------------------------- |
 | `/api/cron/cleanup-rooms` | `0 8 * * *` | Delete rooms idle >7d (also keeps Supabase awake) |
 
-Deploy to Vercel, set `CRON_SECRET`, and confirm the jobs under **Project → Settings → Cron Jobs**. Vercel sends `Authorization: Bearer <CRON_SECRET>`.
+Set repo secret `CRON_SECRET` (same value as on Vercel) and optional variable `APP_URL` (defaults to the production Vercel URL). The workflow sends `Authorization: Bearer <CRON_SECRET>`.
 
 If the Supabase project is already paused, resume it from the [dashboard](https://supabase.com/dashboard) and wait a minute or two.
 

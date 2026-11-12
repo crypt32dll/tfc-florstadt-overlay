@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
-import { KickerColorPicker } from "@/components/brand/KickerColorPicker";
 import { ConfirmSheet } from "@/components/control/ConfirmSheet";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
 import {
@@ -559,7 +558,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
         Normal: bis 5 (auch 5:4) · Entscheidungssatz: 2 Vorsprung, max. 8:7 ·
         Lineup 2D–2E–2D–2E–2D
       </p>
-
     </div>
   );
 }

@@ -34,7 +34,5 @@ export function LiveControlClient({ initialRoomId, initialState }: Props) {
     };
   }, [roomId]);
 
-  return (
-    <ControlPanel key={roomId} roomId={roomId} initialState={bootState} />
-  );
+  return <ControlPanel key={roomId} roomId={roomId} initialState={bootState} />;
 }

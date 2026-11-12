@@ -1,0 +1,30 @@
+name: Cron
+
+on:
+  schedule:
+    # 08:00 UTC daily — cleanup idle rooms + keep Supabase awake
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  cleanup-rooms:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call cleanup-rooms
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "Missing GitHub secret CRON_SECRET" >&2
+            exit 1
+          fi
+          base="${APP_URL:-https://tfc-florstadt-overlay.vercel.app}"
+          base="${base%/}"
+          echo "GET ${base}/api/cron/cleanup-rooms"
+          curl -fsS \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Accept: application/json" \
+            "${base}/api/cron/cleanup-rooms"
+          echo

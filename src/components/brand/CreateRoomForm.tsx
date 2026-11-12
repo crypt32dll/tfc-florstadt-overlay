@@ -108,8 +108,8 @@ export function CreateRoomForm() {
           Stream Overlay
         </h1>
         <p className="text-sm text-muted">
-          Gegner eintragen — Heim ist TFC Florstadt, wenn leer. PIN ist
-          clubweit fest.
+          Gegner eintragen — Heim ist TFC Florstadt, wenn leer. PIN ist clubweit
+          fest.
         </p>
       </div>
 

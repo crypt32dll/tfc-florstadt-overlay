@@ -43,42 +43,45 @@ export function useControlSession(roomId: string) {
   const pinSubmitting = useRef(false);
   const autoPinTried = useRef(false);
 
-  const submitPin = useCallback(async (rawPin: string) => {
-    if (pinSubmitting.current) return false;
+  const submitPin = useCallback(
+    async (rawPin: string) => {
+      if (pinSubmitting.current) return false;
 
-    const cleanPin = rawPin.replace(/\D/g, "");
-    if (cleanPin.length < 4 || cleanPin.length > 6) {
-      setAuthError("PIN muss 4–6 Ziffern haben.");
-      return false;
-    }
-
-    pinSubmitting.current = true;
-    setPinLoading(true);
-    setAuthError(null);
-    try {
-      const res = await verifyRoomPin({ roomId, pin: cleanPin });
-      if (!res.ok) {
-        setAuthError(actionErrorMessage(res));
-        log.warn("PIN failed", res.code);
+      const cleanPin = rawPin.replace(/\D/g, "");
+      if (cleanPin.length < 4 || cleanPin.length > 6) {
+        setAuthError("PIN muss 4–6 Ziffern haben.");
         return false;
       }
-      setAuthorized(true);
-      setPin("");
-      stripPinFromUrl();
-      return true;
-    } catch (err) {
-      log.error("PIN network error", err);
-      setAuthError(
-        err instanceof Error
-          ? err.message
-          : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
-      );
-      return false;
-    } finally {
-      pinSubmitting.current = false;
-      setPinLoading(false);
-    }
-  }, [roomId]);
+
+      pinSubmitting.current = true;
+      setPinLoading(true);
+      setAuthError(null);
+      try {
+        const res = await verifyRoomPin({ roomId, pin: cleanPin });
+        if (!res.ok) {
+          setAuthError(actionErrorMessage(res));
+          log.warn("PIN failed", res.code);
+          return false;
+        }
+        setAuthorized(true);
+        setPin("");
+        stripPinFromUrl();
+        return true;
+      } catch (err) {
+        log.error("PIN network error", err);
+        setAuthError(
+          err instanceof Error
+            ? err.message
+            : "Verbindung fehlgeschlagen. Bitte WLAN/URL prüfen und erneut versuchen.",
+        );
+        return false;
+      } finally {
+        pinSubmitting.current = false;
+        setPinLoading(false);
+      }
+    },
+    [roomId],
+  );
 
   useEffect(() => {
     autoPinTried.current = false;
