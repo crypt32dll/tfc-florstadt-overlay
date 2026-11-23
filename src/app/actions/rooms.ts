@@ -33,6 +33,9 @@ export async function createRoom(input?: {
   teamB?: string;
   teamAColor?: string;
   teamBColor?: string;
+  teamALogo?: string | null;
+  teamBLogo?: string | null;
+  retargetLive?: boolean;
 }): Promise<
   ActionResult<{
     roomId: string;
@@ -43,17 +46,33 @@ export async function createRoom(input?: {
   try {
     const pin = getControlPin();
     const parsed = createRoomSchema.parse({
-      teamA: input?.teamA ?? "TFC Florstadt",
+      teamA: input?.teamA ?? "TFC Florstadt 1",
       teamB: input?.teamB ?? "",
       teamAColor: input?.teamAColor,
       teamBColor: input?.teamBColor,
+      teamALogo: input?.teamALogo,
+      teamBLogo: input?.teamBLogo,
+      retargetLive: input?.retargetLive ?? false,
     });
-    const id = roomId();
     const store = await getStore();
+    const existingLive = await store.getLiveRoomId();
+    if (existingLive && !parsed.retargetLive) {
+      log.warn("createRoom blocked — live pointer active", {
+        liveRoomId: existingLive,
+      });
+      return actionFail(
+        "LIVE_ACTIVE",
+        "Es läuft bereits ein Live-Raum. Bestätigen, um /overlay/live umzuleiten.",
+      );
+    }
+    const id = roomId();
     const state = createInitialState(parsed.teamA, parsed.teamB, {
       teamAColor: parsed.teamAColor,
       teamBColor: parsed.teamBColor,
+      teamALogo: parsed.teamALogo ?? null,
+      teamBLogo: parsed.teamBLogo ?? null,
     });
+    // pin_hash is legacy column (auth uses CONTROL_PIN); store a club-pin hash for schema compat.
     await store.create({
       id,
       pinHash: await hashPin(pin),
@@ -62,7 +81,11 @@ export async function createRoom(input?: {
     });
     await store.setLiveRoomId(id);
     await createRoomSession(id);
-    log.info("room created", { roomId: id, storeMode: store.mode });
+    log.info("room created", {
+      roomId: id,
+      storeMode: store.mode,
+      retargeted: Boolean(existingLive),
+    });
     return actionOk({ roomId: id, pin, storeMode: store.mode });
   } catch (e) {
     if (e instanceof ZodError) {

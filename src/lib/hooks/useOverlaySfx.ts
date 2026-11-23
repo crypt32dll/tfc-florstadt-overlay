@@ -6,6 +6,14 @@ import type { MatchState } from "@/lib/match/types";
 
 export type SfxKind = "goal" | "switch" | "set";
 
+const FILE_SFX: Record<SfxKind, string> = {
+  goal: "/sfx/goal.mp3",
+  set: "/sfx/set.mp3",
+  switch: "/sfx/switch.mp3",
+};
+
+const fileReady = new Map<SfxKind, boolean | "pending">();
+
 function playTone(
   ctx: AudioContext,
   {
@@ -36,7 +44,7 @@ function playTone(
   osc.stop(t0 + duration + 0.02);
 }
 
-export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
+function playSynth(ctx: AudioContext, kind: SfxKind, volume: number) {
   const v = Math.min(1, Math.max(0, volume)) * 0.35;
   if (kind === "goal") {
     playTone(ctx, { freq: 520, duration: 0.12, type: "triangle", volume: v });
@@ -87,6 +95,28 @@ export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
   });
 }
 
+/** Prefer `/public/sfx/{kind}.mp3` when present; else Web Audio tones. */
+export function playSfx(ctx: AudioContext, kind: SfxKind, volume: number) {
+  const ready = fileReady.get(kind);
+  if (ready === true) {
+    const audio = new Audio(FILE_SFX[kind]);
+    audio.volume = Math.min(1, Math.max(0, volume));
+    void audio.play().catch(() => playSynth(ctx, kind, volume));
+    return;
+  }
+  if (ready !== "pending") {
+    fileReady.set(kind, "pending");
+    void fetch(FILE_SFX[kind], { method: "HEAD" })
+      .then((res) => {
+        fileReady.set(kind, res.ok);
+      })
+      .catch(() => {
+        fileReady.set(kind, false);
+      });
+  }
+  playSynth(ctx, kind, volume);
+}
+
 function ensureAudioContext(ref: { current: AudioContext | null }) {
   if (!ref.current) {
     const AC =
@@ -102,7 +132,7 @@ function ensureAudioContext(ref: { current: AudioContext | null }) {
 }
 
 /**
- * Plays short WebAudio stingers in the OBS overlay browser source.
+ * Plays short stingers in the OBS overlay browser source.
  * Debounces rapid goals; respects sfxEnabled / reduced motion.
  */
 export function useOverlaySfx(state: MatchState) {
@@ -141,7 +171,6 @@ export function useOverlaySfx(state: MatchState) {
     if (revision <= prev.revision) return;
 
     try {
-      // Explicit test ping from Control (always plays when ping bumps)
       if (sfxPing > prev.sfxPing) {
         playSfx(ensureAudioContext(ctxRef), "switch", sfxVolume || 0.7);
         return;

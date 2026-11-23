@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { OverlayShell } from "@/components/overlay/OverlayShell";
 import { getPublicControlPin } from "@/lib/auth/control-pin";
+import { useNow } from "@/lib/hooks/useNow";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import type { MatchState } from "@/lib/match/types";
 
@@ -14,11 +15,20 @@ type Props = {
   pinHint?: string | null;
 };
 
-export function LabClient({ roomId, initialState, pinHint }: Props) {
-  const { state, replaceState, refresh, connected } = useRoomState(
-    roomId,
-    initialState,
+function SyncAge({ lastSyncAt }: { lastSyncAt: number | null }) {
+  const now = useNow(true, 1000);
+  if (!lastSyncAt || now === 0) return <span className="text-muted">—</span>;
+  const lagSec = Math.max(0, Math.round((now - lastSyncAt) / 1000));
+  return (
+    <span className={lagSec > 5 ? "text-amber-200" : undefined}>
+      {lagSec === 0 ? "gerade eben" : `vor ${lagSec}s`}
+    </span>
   );
+}
+
+export function LabClient({ roomId, initialState, pinHint }: Props) {
+  const { state, replaceState, refresh, connected, lastSyncAt, transport } =
+    useRoomState(roomId, initialState);
   const [backdrop, setBackdrop] = useState<"checker" | "stream">("stream");
   const [qr, setQr] = useState<string>("");
   const origin = useSyncExternalStore(
@@ -135,6 +145,38 @@ export function LabClient({ roomId, initialState, pinHint }: Props) {
                 <span className="badge-live">verbunden</span>
               ) : (
                 <span className="text-amber-200">Sync …</span>
+              )}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">Transport</dt>
+            <dd className="uppercase">
+              {transport === "realtime"
+                ? "Realtime"
+                : transport === "poll"
+                  ? "Poll"
+                  : "—"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">Letzter Sync</dt>
+            <dd>
+              <SyncAge lastSyncAt={lastSyncAt} />
+            </dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">Revision</dt>
+            <dd className="font-mono">{state.revision}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">Transition</dt>
+            <dd>
+              {state.activeView === "transition" ? (
+                <span className="text-amber-200">
+                  → {state.transitionTo ?? "?"}
+                </span>
+              ) : (
+                <span className="text-muted">ok</span>
               )}
             </dd>
           </div>

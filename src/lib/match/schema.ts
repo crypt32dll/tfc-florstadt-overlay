@@ -35,22 +35,28 @@ export const teamNameSchema = z
   .string()
   .trim()
   .min(1, "Teamname darf nicht leer sein")
-  .max(32, "Maximal 32 Zeichen");
+  .max(40, "Maximal 40 Zeichen");
+
+const teamLogoSchema = z.string().url().max(512).nullable().optional();
 
 export const createRoomSchema = z.object({
   teamA: z
     .string()
     .trim()
     .min(1, "Team A: Name eingeben")
-    .max(32, "Team A: Maximal 32 Zeichen")
-    .default("TFC Florstadt"),
+    .max(40, "Team A: Maximal 40 Zeichen")
+    .default("TFC Florstadt 1"),
   teamB: z
     .string()
     .trim()
     .min(1, "Gegner: Name eingeben")
-    .max(32, "Gegner: Maximal 32 Zeichen"),
+    .max(40, "Gegner: Maximal 40 Zeichen"),
   teamAColor: kickerColorSchema.optional(),
   teamBColor: kickerColorSchema.optional(),
+  teamALogo: teamLogoSchema,
+  teamBLogo: teamLogoSchema,
+  /** When false and a live room already exists, createRoom returns LIVE_ACTIVE. */
+  retargetLive: z.boolean().optional().default(false),
 });
 
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
@@ -69,8 +75,14 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("setName"),
     side: teamSideSchema,
-    name: z.string().trim().min(1).max(32),
+    name: z.string().trim().min(1).max(40),
   }),
+  z.object({
+    type: z.literal("setTeamLogo"),
+    side: teamSideSchema,
+    logoUrl: z.string().url().max(512).nullable(),
+  }),
+
   z.object({
     type: z.literal("timer"),
     action: z.enum(["start", "pause", "reset"]),
@@ -78,10 +90,12 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("resetMatch") }),
   z.object({
     type: z.literal("newMatch"),
-    teamA: z.string().trim().min(1).max(32).optional(),
-    teamB: z.string().trim().min(1).max(32),
+    teamA: z.string().trim().min(1).max(40).optional(),
+    teamB: z.string().trim().min(1).max(40),
     teamAColor: kickerColorSchema.optional(),
     teamBColor: kickerColorSchema.optional(),
+    teamALogo: teamLogoSchema,
+    teamBLogo: teamLogoSchema,
     matchFormat: matchFormatSchema.optional(),
   }),
   z.object({ type: z.literal("finishMatch") }),
@@ -114,8 +128,8 @@ export const mutationSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("editHistory"),
     index: z.number().int().min(0).max(19),
-    teamA: z.string().trim().min(1).max(32).optional(),
-    teamB: z.string().trim().min(1).max(32).optional(),
+    teamA: z.string().trim().min(1).max(40).optional(),
+    teamB: z.string().trim().min(1).max(40).optional(),
     scoreA: z.number().int().min(0).max(9).optional(),
     scoreB: z.number().int().min(0).max(9).optional(),
     remove: z.boolean().optional(),

@@ -1,8 +1,17 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { TeamCrest } from "@/components/brand/TeamCrest";
 import { ConfirmSheet } from "@/components/control/ConfirmSheet";
+import {
+  GoalButton,
+  LiveTimerDisplay,
+  SmallBtn,
+  UndoGoalButton,
+} from "@/components/control/ControlButtons";
+import { ControlHistory } from "@/components/control/ControlHistory";
+import { ControlMatchSetup } from "@/components/control/ControlMatchSetup";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
 import {
   useControlSession,
@@ -10,42 +19,14 @@ import {
 } from "@/lib/hooks/useControlProtocol";
 import { useRoomState } from "@/lib/hooks/useRoomState";
 import { useSyncedState } from "@/lib/hooks/useSyncedState";
-import { formatTimer, getElapsedMs } from "@/lib/match/format";
 import { GAME_LINEUP } from "@/lib/match/rules";
 import { DESTINATION_VIEWS } from "@/lib/match/schema";
 import type {
   ActiveView,
   DestinationView,
-  MatchHistoryEntry,
   MatchState,
 } from "@/lib/match/types";
 import { runTransitionComplete } from "@/lib/overlay/runTransitionComplete";
-
-function subscribeNow(onStoreChange: () => void, running: boolean) {
-  if (!running) return () => {};
-  const id = window.setInterval(onStoreChange, 250);
-  return () => window.clearInterval(id);
-}
-
-/** Isolates the 250ms tick so ControlPanel doesn't re-render at 4Hz (rerender-memo). */
-function LiveTimerDisplay({ state }: { state: MatchState }) {
-  const timerRunning = state.timer.running;
-  const now = useSyncExternalStore(
-    (onStoreChange) => subscribeNow(onStoreChange, timerRunning),
-    () => Date.now(),
-    () => 0,
-  );
-  const displayedElapsed =
-    !state.timer.running || now === 0
-      ? state.timer.elapsedMs
-      : getElapsedMs(state, now);
-
-  return (
-    <div className="mt-1 text-center font-display text-2xl text-[var(--brand-accent)] tabular-nums">
-      {formatTimer(displayedElapsed)}
-    </div>
-  );
-}
 
 type Props = {
   roomId: string;
@@ -100,6 +81,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
     autoUnlocking,
     onPinSubmit,
   } = session;
+
   if (!authorized) {
     if (autoUnlocking || pinLoading) {
       return (
@@ -266,6 +248,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
               onSave={(name) => run({ type: "setName", side: "a", name })}
               align="right"
             />
+            <TeamCrest src={state.teamALogo} alt="" size={24} />
             <KickerFigure
               color={state.teamAColor}
               size={28}
@@ -285,6 +268,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
               size={28}
               className="shrink-0"
             />
+            <TeamCrest src={state.teamBLogo} alt="" size={24} />
             <TeamNameEditor
               name={state.teamB.name}
               onSave={(name) => run({ type: "setName", side: "b", name })}
@@ -293,31 +277,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
           </div>
         </div>
         <LiveTimerDisplay state={state} />
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run({ type: "setMatchFormat", format: "bestOf3" })}
-          className={`btn text-base ${
-            (state.matchFormat ?? "bestOf3") === "bestOf3"
-              ? "btn-primary"
-              : "btn-ghost"
-          }`}
-        >
-          Best of 3
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => run({ type: "setMatchFormat", format: "bestOf5" })}
-          className={`btn text-base ${
-            state.matchFormat === "bestOf5" ? "btn-primary" : "btn-ghost"
-          }`}
-        >
-          Best of 5
-        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -397,6 +356,13 @@ export function ControlPanel({ roomId, initialState }: Props) {
           {transitionBusy ? "Schließe Transition…" : "Transition abschließen"}
         </button>
       )}
+
+      <ControlMatchSetup
+        state={state}
+        pending={pending}
+        run={run}
+        confirmRun={confirmRun}
+      />
 
       <div className="glass-panel space-y-3 p-3">
         <label className="block space-y-1.5 text-xs tracking-wide text-muted uppercase">
@@ -500,7 +466,8 @@ export function ControlPanel({ roomId, initialState }: Props) {
           Sound testen (Overlay/OBS)
         </SmallBtn>
         <p className="text-[0.7rem] text-muted">
-          OBS: Audio der Browser-Source aktivieren, sonst hörst du nichts.
+          OBS: Audio der Browser-Source aktivieren. Optional:{" "}
+          <code className="text-white/70">/public/sfx/*.mp3</code>
         </p>
       </div>
 
@@ -541,7 +508,7 @@ export function ControlPanel({ roomId, initialState }: Props) {
         Match reset
       </SmallBtn>
 
-      <HistoryEditor
+      <ControlHistory
         history={state.history}
         pending={pending}
         onSave={(index, patch) => run({ type: "editHistory", index, ...patch })}
@@ -559,246 +526,6 @@ export function ControlPanel({ roomId, initialState }: Props) {
         Lineup 2D–2E–2D–2E–2D
       </p>
     </div>
-  );
-}
-
-function HistoryEditor({
-  history,
-  pending,
-  onSave,
-  onRemove,
-}: {
-  history: MatchHistoryEntry[];
-  pending: boolean;
-  onSave: (
-    index: number,
-    patch: {
-      teamA?: string;
-      teamB?: string;
-      scoreA?: number;
-      scoreB?: number;
-    },
-  ) => void;
-  onRemove: (index: number) => void;
-}) {
-  if (history.length === 0) return null;
-
-  return (
-    <div className="glass-panel space-y-3 p-3">
-      <h2 className="text-xs tracking-wide text-muted uppercase">
-        Vergangene Spiele
-      </h2>
-      <ul className="space-y-3">
-        {history.map((game, index) => (
-          <HistoryRow
-            key={game.finishedAt}
-            game={game}
-            index={index}
-            pending={pending}
-            onSave={onSave}
-            onRemove={onRemove}
-          />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function HistoryRow({
-  game,
-  index,
-  pending,
-  onSave,
-  onRemove,
-}: {
-  game: MatchHistoryEntry;
-  index: number;
-  pending: boolean;
-  onSave: (
-    index: number,
-    patch: {
-      teamA?: string;
-      teamB?: string;
-      scoreA?: number;
-      scoreB?: number;
-    },
-  ) => void;
-  onRemove: (index: number) => void;
-}) {
-  const [teamA, setTeamA] = useState(game.teamA);
-  const [teamB, setTeamB] = useState(game.teamB);
-  const [scoreA, setScoreA] = useState(String(game.scoreA));
-  const [scoreB, setScoreB] = useState(String(game.scoreB));
-
-  useEffect(() => {
-    setTeamA(game.teamA);
-    setTeamB(game.teamB);
-    setScoreA(String(game.scoreA));
-    setScoreB(String(game.scoreB));
-  }, [game.teamA, game.teamB, game.scoreA, game.scoreB]);
-
-  const dirty =
-    teamA !== game.teamA ||
-    teamB !== game.teamB ||
-    Number(scoreA) !== game.scoreA ||
-    Number(scoreB) !== game.scoreB;
-
-  return (
-    <li className="space-y-2 rounded-[var(--radius-control)] border border-white/10 bg-black/25 p-2.5">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
-        <input
-          value={teamA}
-          onChange={(e) => setTeamA(e.target.value)}
-          className="glass-input py-1.5 text-sm text-white"
-          aria-label={`Spiel ${index + 1} Team A`}
-        />
-        <div className="flex items-center gap-1 font-display text-xl tabular-nums">
-          <input
-            inputMode="numeric"
-            value={scoreA}
-            onChange={(e) =>
-              setScoreA(e.target.value.replace(/\D/g, "").slice(0, 1))
-            }
-            className="w-10 rounded border border-white/20 bg-black/40 py-1 text-center text-white"
-            aria-label={`Spiel ${index + 1} Sätze A`}
-          />
-          <span className="text-muted">:</span>
-          <input
-            inputMode="numeric"
-            value={scoreB}
-            onChange={(e) =>
-              setScoreB(e.target.value.replace(/\D/g, "").slice(0, 1))
-            }
-            className="w-10 rounded border border-white/20 bg-black/40 py-1 text-center text-white"
-            aria-label={`Spiel ${index + 1} Sätze B`}
-          />
-        </div>
-        <input
-          value={teamB}
-          onChange={(e) => setTeamB(e.target.value)}
-          className="glass-input py-1.5 text-sm text-white"
-          aria-label={`Spiel ${index + 1} Team B`}
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={pending || !dirty || !teamA.trim() || !teamB.trim()}
-          onClick={() =>
-            onSave(index, {
-              teamA: teamA.trim(),
-              teamB: teamB.trim(),
-              scoreA: Math.min(9, Math.max(0, Number(scoreA) || 0)),
-              scoreB: Math.min(9, Math.max(0, Number(scoreB) || 0)),
-            })
-          }
-          className="btn btn-primary min-h-10 flex-1 text-sm"
-        >
-          Speichern
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => onRemove(index)}
-          className="btn btn-ghost min-h-10 px-3 text-sm"
-        >
-          Löschen
-        </button>
-      </div>
-    </li>
-  );
-}
-
-function GoalButton({
-  label,
-  color,
-  onGoal,
-  busy,
-  compact,
-}: {
-  label: string;
-  color: MatchState["teamAColor"];
-  onGoal: () => void;
-  /** Visual busy only — Tor+ stays tappable so rapid goals aren't blocked. */
-  busy?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      aria-busy={busy}
-      onClick={onGoal}
-      className={`btn btn-primary flex-col gap-0.5 px-2 text-white ${
-        compact ? "min-h-14 py-2" : "min-h-28 py-4"
-      }`}
-    >
-      <span
-        className={`font-display tracking-wide uppercase ${
-          compact ? "text-2xl" : "text-4xl"
-        }`}
-      >
-        Tor +
-      </span>
-      <span className="flex max-w-full items-center justify-center gap-1.5 text-xs font-sans font-normal normal-case tracking-normal opacity-90 sm:text-sm">
-        <KickerFigure
-          color={color}
-          size={compact ? 18 : 22}
-          className="shrink-0"
-        />
-        <span className="truncate">{label}</span>
-      </span>
-    </button>
-  );
-}
-
-function UndoGoalButton({
-  label,
-  color,
-  onClick,
-  disabled,
-}: {
-  label: string;
-  color: MatchState["teamAColor"];
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      aria-label={`Tor zurücknehmen ${label}`}
-      className="btn btn-ghost flex min-h-16 flex-col items-center justify-center gap-0.5 px-2 py-2"
-    >
-      <span className="font-display text-xl leading-none tracking-wide uppercase">
-        Tor −
-      </span>
-      <span className="flex max-w-full items-center justify-center gap-1 text-xs font-sans font-normal normal-case tracking-normal opacity-90">
-        <KickerFigure color={color} size={18} className="shrink-0" />
-        <span className="truncate">{label}</span>
-      </span>
-    </button>
-  );
-}
-
-function SmallBtn({
-  children,
-  onClick,
-  disabled,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="btn btn-ghost min-h-12 px-2 py-3 text-lg"
-    >
-      {children}
-    </button>
   );
 }
 

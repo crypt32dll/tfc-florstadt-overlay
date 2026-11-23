@@ -20,6 +20,7 @@ export function BrandLogo({
       className={className}
       style={{ width: "auto", height: "auto", maxWidth: "100%" }}
       priority={priority}
+      unoptimized
     />
   );
 }

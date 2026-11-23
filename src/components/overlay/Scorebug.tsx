@@ -1,9 +1,10 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useSyncExternalStore } from "react";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { TeamCrest } from "@/components/brand/TeamCrest";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
+import { useNow } from "@/lib/hooks/useNow";
 import { formatTimer, getElapsedMs } from "@/lib/match/format";
 import { GAME_LINEUP, setsToWin } from "@/lib/match/rules";
 import type { MatchState } from "@/lib/match/types";
@@ -11,21 +12,13 @@ import type { MatchState } from "@/lib/match/types";
 /** Isolates the 250ms tick so Scorebug shell doesn't re-render at 4Hz (rerender-memo). */
 function LiveTimerDigits({ state }: { state: MatchState }) {
   const running = state.timer.running;
-  const now = useSyncExternalStore(
-    (onStoreChange) => {
-      if (!running) return () => {};
-      const id = window.setInterval(onStoreChange, 250);
-      return () => window.clearInterval(id);
-    },
-    () => Date.now(),
-    () => 0,
-  );
+  const now = useNow(running, 250);
 
   const elapsed =
     !running || now === 0 ? state.timer.elapsedMs : getElapsedMs(state, now);
 
   return (
-    <div className="overlay-score mt-0.5 text-2xl leading-none text-[var(--brand-accent)] tabular-nums md:text-3xl">
+    <div className="overlay-score mt-0.5 text-2xl text-[var(--brand-accent)] tabular-nums md:text-3xl">
       {formatTimer(elapsed)}
     </div>
   );
@@ -78,43 +71,52 @@ export function Scorebug({
             />
           </div>
 
-          <div className="relative flex min-h-[3.25rem] items-center md:min-h-[3.75rem]">
+          <div className="grid min-h-[3.25rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:min-h-[3.75rem] md:gap-4">
+            <div className="flex min-w-0 items-center justify-end gap-2.5">
+              <TeamCrest
+                src={state.teamALogo}
+                alt={state.teamA.name}
+                size={28}
+              />
+              <div className="overlay-score min-w-0 truncate text-right text-2xl leading-none text-white md:text-3xl">
+                {state.teamA.name}
+              </div>
+              <KickerFigure color={state.teamAColor} size={28} />
+            </div>
+
             <motion.div
               key={pulseKey}
               initial={reduceMotion ? false : { scale: 1.12 }}
               animate={{ scale: 1 }}
               transition={{ duration: reduceMotion ? 0 : 0.28 }}
-              className="overlay-score absolute top-1/2 left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center text-5xl leading-none text-white tabular-nums md:text-6xl"
+              className="overlay-score flex h-[1em] shrink-0 items-center text-5xl leading-none text-white tabular-nums md:text-6xl"
               aria-label={`Spielstand ${state.teamA.score} zu ${state.teamB.score}`}
             >
-              <span className="inline-block w-[1.05em] text-center">
+              <span className="inline-block w-[1.05em] text-center leading-none">
                 {state.teamA.score}
               </span>
-              <span className="inline-flex w-[0.55em] items-center justify-center text-[0.62em] text-[var(--brand-accent)]">
+              <span className="inline-flex w-[0.55em] items-center justify-center text-[0.62em] leading-none text-[var(--brand-accent)]">
                 :
               </span>
-              <span className="inline-block w-[1.05em] text-center">
+              <span className="inline-block w-[1.05em] text-center leading-none">
                 {state.teamB.score}
               </span>
             </motion.div>
 
-            <div className="grid w-full grid-cols-2 items-center">
-              <div className="flex items-center justify-end gap-2 pr-[3.6rem] md:pr-[4.25rem]">
-                <div className="overlay-score truncate text-right text-2xl leading-none text-white md:text-3xl">
-                  {state.teamA.name}
-                </div>
-                <KickerFigure color={state.teamAColor} size={26} />
+            <div className="flex min-w-0 items-center justify-start gap-2.5">
+              <KickerFigure color={state.teamBColor} size={28} />
+              <div className="overlay-score min-w-0 truncate text-left text-2xl leading-none text-white md:text-3xl">
+                {state.teamB.name}
               </div>
-              <div className="flex items-center justify-start gap-2 pl-[3.6rem] md:pl-[4.25rem]">
-                <KickerFigure color={state.teamBColor} size={26} />
-                <div className="overlay-score truncate text-left text-2xl leading-none text-white md:text-3xl">
-                  {state.teamB.name}
-                </div>
-              </div>
+              <TeamCrest
+                src={state.teamBLogo}
+                alt={state.teamB.name}
+                size={28}
+              />
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center text-center">
+          <div className="flex flex-col items-center justify-center gap-0.5 text-center">
             <div className="text-[0.65rem] leading-none tracking-[0.18em] text-white/55 uppercase">
               Zeit
             </div>

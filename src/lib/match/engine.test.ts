@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyMutation, createInitialState } from "@/lib/match/engine";
 import { normalizeState } from "@/lib/match/migrate";
 import {
+  GAME_LINEUP,
   isDecidingSet,
   isSetComplete,
   maxGoals,
@@ -93,16 +94,24 @@ describe("applyMutation", () => {
       activeView: "live",
       matchFormat: "bestOf3",
       sets: { a: 1, b: 0 },
+      setScores: [{ a: 5, b: 3 }],
       teamA: { ...s.teamA, score: 4 },
       teamB: { ...s.teamB, score: 2 },
       sessionWins: { a: 1, b: 0 },
     };
     s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
     expect(s.sets).toEqual({ a: 0, b: 0 });
+    expect(s.setScores).toEqual([]);
     expect(s.activeView).toBe("transition");
     expect(s.transitionTo).toBe("standings");
     expect(s.lineupIndex).toBe(1);
     expect(s.history.length).toBe(1);
+    expect(s.history[0]?.scoreA).toBe(2);
+    expect(s.history[0]?.scoreB).toBe(0);
+    expect(s.history[0]?.setScores).toEqual([
+      { a: 5, b: 3 },
+      { a: 5, b: 2 },
+    ]);
   });
 
   it("deciding set requires 2-goal lead at 5", () => {
@@ -131,6 +140,10 @@ describe("applyMutation", () => {
       activeView: "live",
       matchFormat: "bestOf3",
       sets: { a: 1, b: 1 },
+      setScores: [
+        { a: 5, b: 2 },
+        { a: 3, b: 5 },
+      ],
       teamA: { ...s.teamA, score: 7 },
       teamB: { ...s.teamB, score: 7 },
       sessionWins: { a: 1, b: 1 },
@@ -139,6 +152,33 @@ describe("applyMutation", () => {
     expect(s.sets).toEqual({ a: 0, b: 0 });
     expect(s.history[0]?.scoreA).toBe(2);
     expect(s.history[0]?.scoreB).toBe(1);
+    expect(s.history[0]?.setScores).toEqual([
+      { a: 5, b: 2 },
+      { a: 3, b: 5 },
+      { a: 8, b: 7 },
+    ]);
+  });
+
+  it("finishMatch folds unfinished set goals into history detail", () => {
+    let s = createInitialState("TFC", "Gegner");
+    s = {
+      ...s,
+      activeView: "live",
+      matchFormat: "bestOf3",
+      sets: { a: 1, b: 0 },
+      setScores: [{ a: 5, b: 4 }],
+      teamA: { ...s.teamA, score: 3 },
+      teamB: { ...s.teamB, score: 1 },
+      sessionWins: { a: 1, b: 0 },
+    };
+    s = applyMutation(s, { type: "finishMatch" });
+    expect(s.history[0]?.scoreA).toBe(2);
+    expect(s.history[0]?.scoreB).toBe(0);
+    expect(s.history[0]?.setScores).toEqual([
+      { a: 5, b: 4 },
+      { a: 3, b: 1 },
+    ]);
+    expect(s.sessionWins).toEqual({ a: 2, b: 0 });
   });
 
   it("swapSides mirrors history entries", () => {
@@ -167,6 +207,47 @@ describe("applyMutation", () => {
       scoreB: 2,
     });
     expect(s.sessionWins).toEqual({ a: 0, b: 2 });
+  });
+
+  it("setName renames matching history entries for Zwischenstand", () => {
+    let s = createInitialState("TFC Florstadt 1", "SV 06 Alsfeld 1");
+    s = {
+      ...s,
+      history: [
+        {
+          teamA: "TFC Florstadt 1",
+          teamB: "SV 06 Alsfeld 1",
+          scoreA: 2,
+          scoreB: 0,
+          elapsedMs: 1000,
+          finishedAt: 1,
+        },
+        {
+          teamA: "TFC Florstadt 1",
+          teamB: "SV 06 Alsfeld 1",
+          scoreA: 2,
+          scoreB: 1,
+          elapsedMs: 2000,
+          finishedAt: 2,
+        },
+      ],
+    };
+    s = applyMutation(s, {
+      type: "setName",
+      side: "a",
+      name: "TFC Florstadt",
+    });
+    expect(s.teamA.name).toBe("TFC Florstadt");
+    expect(s.history.every((g) => g.teamA === "TFC Florstadt")).toBe(true);
+    expect(s.history.every((g) => g.teamB === "SV 06 Alsfeld 1")).toBe(true);
+
+    s = applyMutation(s, {
+      type: "setName",
+      side: "b",
+      name: "Alsfeld",
+    });
+    expect(s.teamB.name).toBe("Alsfeld");
+    expect(s.history.every((g) => g.teamB === "Alsfeld")).toBe(true);
   });
 
   it("editHistory patches entry and rebuilds sessionWins without transition", () => {
@@ -361,5 +442,52 @@ describe("applyMutation", () => {
     });
     expect(s1.brbMessage).toBe("Bald weiter");
     expect(s1.startingMessage).toBe(s0.startingMessage);
+  });
+
+  it("last lineup game marks sessionComplete and goes to ending", () => {
+    let s = createInitialState("TFC", "Gegner");
+    const last = GAME_LINEUP.length - 1;
+    s = {
+      ...s,
+      activeView: "live",
+      lineupIndex: last,
+      gameType: GAME_LINEUP[last],
+      matchFormat: "bestOf3",
+      sets: { a: 1, b: 0 },
+      teamA: { ...s.teamA, score: 4 },
+      teamB: { ...s.teamB, score: 2 },
+    };
+    s = applyMutation(s, { type: "goal", side: "a", delta: 1 });
+    expect(s.sessionComplete).toBe(true);
+    expect(s.transitionTo).toBe("ending");
+    expect(s.lineupIndex).toBe(last);
+  });
+
+  it("newMatch clears session and sets opponent logo", () => {
+    let s = createInitialState("TFC", "Alt");
+    s = {
+      ...s,
+      sessionComplete: true,
+      history: [
+        {
+          teamA: "TFC",
+          teamB: "Alt",
+          scoreA: 2,
+          scoreB: 0,
+          elapsedMs: 1000,
+          finishedAt: 1,
+        },
+      ],
+    };
+    s = applyMutation(s, {
+      type: "newMatch",
+      teamB: "VfB Rodheim 1",
+      teamBLogo: "https://tfvh.de/images/sportsmanager/vereine/x.png",
+    });
+    expect(s.teamB.name).toBe("VfB Rodheim 1");
+    expect(s.teamBLogo).toContain("tfvh.de");
+    expect(s.sessionComplete).toBe(false);
+    expect(s.history).toEqual([]);
+    expect(s.activeView).toBe("startingSoon");
   });
 });

@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { TeamCrest } from "@/components/brand/TeamCrest";
 import type { MatchState } from "@/lib/match/types";
 
 export function EndingScreen({
@@ -42,8 +43,11 @@ export function EndingScreen({
           Endstand Session
         </div>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 md:gap-5">
-          <div className="overlay-score truncate text-right text-3xl leading-none md:text-4xl">
-            {state.teamA.name}
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            <TeamCrest src={state.teamALogo} alt={state.teamA.name} size={36} />
+            <div className="overlay-score truncate text-right text-3xl leading-none md:text-4xl">
+              {state.teamA.name}
+            </div>
           </div>
           <div className="overlay-score flex items-center justify-center gap-2 text-5xl leading-none tabular-nums md:text-6xl">
             <span className="inline-block w-[1.05em] text-center">
@@ -54,8 +58,11 @@ export function EndingScreen({
               {state.sessionWins.b}
             </span>
           </div>
-          <div className="overlay-score truncate text-left text-3xl leading-none md:text-4xl">
-            {state.teamB.name}
+          <div className="flex min-w-0 items-center justify-start gap-2">
+            <div className="overlay-score truncate text-left text-3xl leading-none md:text-4xl">
+              {state.teamB.name}
+            </div>
+            <TeamCrest src={state.teamBLogo} alt={state.teamB.name} size={36} />
           </div>
         </div>
       </div>

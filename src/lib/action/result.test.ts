@@ -29,5 +29,8 @@ describe("ActionResult", () => {
     expect(actionErrorMessage(actionFail("NOT_FOUND"))).toContain(
       "nicht gefunden",
     );
+    expect(actionErrorMessage(actionFail("LIVE_ACTIVE"))).toContain(
+      "Live-Raum",
+    );
   });
 });

@@ -326,11 +326,13 @@ button:disabled,
     linear-gradient(180deg, #05080f 0%, #0a1220 55%, #05080f 100%);
 }
 
+/* Teko’s em-box is taller than the caps — tight LH keeps glyphs optically centered. */
 .overlay-score {
   font-family: var(--font-teko);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 0.85;
 }
 
 .overlay-divider {

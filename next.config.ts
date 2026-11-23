@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
     root,
   },
   images: {
-    // BrandMark uses quality={100} for crisp club icons
-    qualities: [75, 100],
+    // Skip Vercel Image Optimization billing — assets are already sized in /public.
+    unoptimized: true,
   },
 };
 

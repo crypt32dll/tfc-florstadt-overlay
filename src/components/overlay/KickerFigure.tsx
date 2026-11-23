@@ -23,7 +23,7 @@ export function KickerFigure({ color, className = "", size = 28 }: Props) {
       width={size}
       height={size}
       viewBox="0 0 32 48"
-      className={className}
+      className={`block shrink-0 ${className}`}
       aria-hidden="true"
     >
       <g

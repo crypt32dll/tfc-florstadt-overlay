@@ -11,6 +11,7 @@ export type ActionErrorCode =
   | "VALIDATION"
   | "RATE_LIMITED"
   | "SESSION"
+  | "LIVE_ACTIVE"
   | "UNKNOWN";
 
 export type ActionOk<T> = { ok: true; data: T };
@@ -51,6 +52,8 @@ export function actionErrorMessage(result: ActionFail): string {
       return "Eingaben prüfen";
     case "SESSION":
       return "Session konnte nicht gesetzt werden";
+    case "LIVE_ACTIVE":
+      return "Es läuft bereits ein Live-Raum — OBS würde umgeleitet.";
     default:
       return "Aktion fehlgeschlagen";
   }

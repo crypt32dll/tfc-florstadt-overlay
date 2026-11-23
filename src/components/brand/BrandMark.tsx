@@ -34,7 +34,7 @@ export function BrandMark({
       style={{ width: display, height: display }}
       priority={priority}
       loading={priority ? "eager" : "lazy"}
-      quality={100}
+      unoptimized
       aria-hidden
     />
   );

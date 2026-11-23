@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { TeamCrest } from "@/components/brand/TeamCrest";
 import { KickerFigure } from "@/components/overlay/KickerFigure";
 import type { MatchState } from "@/lib/match/types";
 
@@ -65,6 +66,12 @@ export function StartingSoonScreen({
       <div className="overlay-glass overlay-glass-accent relative mt-8 w-[min(1680px,92%)] shrink-0 px-8 py-6 md:mt-10 md:px-12 md:py-7">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-6 md:gap-x-10">
           <div className="flex min-w-0 items-center justify-end gap-3">
+            <TeamCrest
+              src={state.teamALogo}
+              alt={state.teamA.name}
+              size={48}
+              priority
+            />
             <div className="overlay-score max-w-full text-right text-4xl leading-tight text-balance md:text-5xl lg:text-6xl">
               {state.teamA.name}
             </div>
@@ -86,6 +93,12 @@ export function StartingSoonScreen({
             <div className="overlay-score max-w-full text-left text-4xl leading-tight text-balance md:text-5xl lg:text-6xl">
               {state.teamB.name}
             </div>
+            <TeamCrest
+              src={state.teamBLogo}
+              alt={state.teamB.name}
+              size={48}
+              priority
+            />
           </div>
         </div>
       </div>

@@ -29,20 +29,34 @@ export function useRoomState(
   );
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [transport, setTransport] = useState<"realtime" | "poll" | "idle">(
+    "idle",
+  );
   const revisionRef = useRef(normalizeState(initialState).revision);
 
-  const applyRemote = useCallback((next: MatchState) => {
-    const normalized = normalizeState(next);
-    if (normalized.revision <= revisionRef.current) return;
-    revisionRef.current = normalized.revision;
-    setState(normalized);
+  const markSynced = useCallback((mode: "realtime" | "poll") => {
+    setLastSyncAt(Date.now());
+    setTransport(mode);
   }, []);
 
-  /** Force-replace local state (e.g. after CONFLICT resync). */
+  const applyRemote = useCallback(
+    (next: MatchState, mode: "realtime" | "poll" = "realtime") => {
+      const normalized = normalizeState(next);
+      if (normalized.revision <= revisionRef.current) return;
+      revisionRef.current = normalized.revision;
+      setState(normalized);
+      markSynced(mode);
+    },
+    [markSynced],
+  );
+
+  /** Force-replace local state (e.g. after CONFLICT resync / mutation ack). */
   const replaceState = useCallback((next: MatchState) => {
     const normalized = normalizeState(next);
     revisionRef.current = normalized.revision;
     setState(normalized);
+    setLastSyncAt(Date.now());
   }, []);
 
   const refresh = useCallback(async () => {
@@ -79,7 +93,7 @@ export function useRoomState(
         }
         setError(null);
         setConnected(true);
-        applyRemote(res.data.state);
+        applyRemote(res.data.state, "poll");
       } catch (e) {
         if (!cancelled) {
           log.error("poll crashed", e);
@@ -108,7 +122,7 @@ export function useRoomState(
               if (row?.state) {
                 setConnected(true);
                 setError(null);
-                applyRemote(row.state);
+                applyRemote(row.state, "realtime");
               }
             },
           )
@@ -117,6 +131,7 @@ export function useRoomState(
             if (status === "SUBSCRIBED") {
               setConnected(true);
               setError(null);
+              setTransport("realtime");
               return;
             }
             if (
@@ -162,5 +177,7 @@ export function useRoomState(
     refresh,
     connected,
     error,
+    lastSyncAt,
+    transport,
   };
 }

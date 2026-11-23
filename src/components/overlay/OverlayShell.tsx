@@ -10,6 +10,7 @@ import { isShowingView } from "@/lib/match/views";
 import { runTransitionComplete } from "@/lib/overlay/runTransitionComplete";
 import { BrbScreen } from "./BrbScreen";
 import { EndingScreen } from "./EndingScreen";
+import { GoalBanner } from "./GoalBanner";
 import { Scorebug } from "./Scorebug";
 import { StandingsScreen } from "./StandingsScreen";
 import { StartingSoonScreen } from "./StartingSoonScreen";
@@ -82,7 +83,8 @@ export function OverlayShell({
       }
       style={mode === "overlay" ? { width: 1920, height: 1080 } : undefined}
     >
-      <AnimatePresence mode="sync">
+      {/* sync avoids exit/enter stacking cost under rapid view switches (OBS). */}
+      <AnimatePresence mode="sync" initial={false}>
         {isShowingView(state, "startingSoon") && (
           <StartingSoonScreen key="soon" state={state} instant={stinging} />
         )}
@@ -99,6 +101,8 @@ export function OverlayShell({
           <EndingScreen key="ending" state={state} instant={stinging} />
         )}
       </AnimatePresence>
+
+      <GoalBanner state={state} />
 
       {stinging && (
         <KickerTransition

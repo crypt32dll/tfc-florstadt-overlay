@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   checkControlAuth,
   getRoomState,
@@ -13,6 +13,8 @@ import { clientLog } from "@/lib/logger.client";
 import type { MatchState, RoomMutation } from "@/lib/match/types";
 
 const log = clientLog("control");
+
+const CONFLICT_RETRIES = 2;
 
 function pinFromLocation(): string | null {
   if (typeof window === "undefined") return null;
@@ -103,11 +105,9 @@ export function useControlSession(roomId: string) {
         setPin(autoPin);
         const ok = await submitPin(autoPin);
         if (cancelled) return;
+        setAutoUnlocking(false);
         if (!ok) {
-          // Keep PIN field filled for manual retry; show form
-          setAutoUnlocking(false);
-        } else {
-          setAutoUnlocking(false);
+          // Keep PIN field filled for manual retry
         }
         return;
       }
@@ -145,11 +145,11 @@ type MutateDeps = {
 };
 
 /**
- * RoomMutation protocol: revision checks, CONFLICT resync, UNAUTHORIZED.
+ * RoomMutation protocol: serial queue, CONFLICT retry, UNAUTHORIZED.
  * Keeps ControlPanel as presentational surface.
  */
 export function useRoomMutate(roomId: string, deps: MutateDeps) {
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<{
@@ -158,6 +158,8 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
   } | null>(null);
   const depsRef = useRef(deps);
   depsRef.current = deps;
+  const queueRef = useRef<RoomMutation[]>([]);
+  const drainingRef = useRef(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -167,37 +169,64 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
 
   const showInfoToast = useCallback((message: string) => setToast(message), []);
 
-  const run = useCallback(
-    (mutation: RoomMutation) => {
-      startTransition(async () => {
-        const { replaceState, refresh, getRevision, onUnauthorized } =
-          depsRef.current;
+  const drain = useCallback(async () => {
+    if (drainingRef.current) return;
+    drainingRef.current = true;
+    setPending(true);
+
+    const { replaceState, refresh, getRevision, onUnauthorized } =
+      depsRef.current;
+
+    while (queueRef.current.length > 0) {
+      const mutation = queueRef.current.shift();
+      if (!mutation) break;
+
+      let attempts = 0;
+      let done = false;
+      while (!done && attempts <= CONFLICT_RETRIES) {
         try {
           const res = await mutateRoom(roomId, mutation, {
             expectedRevision: getRevision(),
           });
-          if (!res.ok) {
-            if (res.code === "UNAUTHORIZED") {
-              onUnauthorized();
-              setMutationError(actionErrorMessage(res));
-              log.warn("session expired", roomId);
-            } else if (res.code === "CONFLICT") {
-              showInfoToast(actionErrorMessage(res));
-              log.warn("revision conflict", roomId);
-              const fresh = await getRoomState(roomId);
-              if (fresh.ok) {
-                replaceState(fresh.data.state);
-              } else {
-                await refresh();
-              }
-            } else {
-              setMutationError(actionErrorMessage(res));
-              log.warn("mutation rejected", res.code);
-            }
-            return;
+          if (res.ok) {
+            setMutationError(null);
+            replaceState(res.data.state);
+            done = true;
+            break;
           }
-          setMutationError(null);
-          replaceState(res.data.state);
+
+          if (res.code === "UNAUTHORIZED") {
+            onUnauthorized();
+            setMutationError(actionErrorMessage(res));
+            log.warn("session expired", roomId);
+            queueRef.current = [];
+            done = true;
+            break;
+          }
+
+          if (res.code === "CONFLICT") {
+            attempts += 1;
+            log.warn("revision conflict — retry", {
+              roomId,
+              attempt: attempts,
+              type: mutation.type,
+            });
+            const fresh = await getRoomState(roomId);
+            if (fresh.ok) {
+              replaceState(fresh.data.state);
+            } else {
+              await refresh();
+            }
+            if (attempts > CONFLICT_RETRIES) {
+              showInfoToast(actionErrorMessage(res));
+              done = true;
+            }
+            continue;
+          }
+
+          setMutationError(actionErrorMessage(res));
+          log.warn("mutation rejected", res.code);
+          done = true;
         } catch (err) {
           log.error("mutation network error", err);
           const msg =
@@ -205,10 +234,25 @@ export function useRoomMutate(roomId: string, deps: MutateDeps) {
               ? err.message
               : "Netzwerkfehler – bitte erneut versuchen.";
           setMutationError(msg);
+          done = true;
         }
-      });
+      }
+    }
+
+    drainingRef.current = false;
+    setPending(queueRef.current.length > 0);
+    if (queueRef.current.length > 0) {
+      void drain();
+    }
+  }, [roomId, showInfoToast]);
+
+  const run = useCallback(
+    (mutation: RoomMutation) => {
+      queueRef.current.push(mutation);
+      setPending(true);
+      void drain();
     },
-    [roomId, showInfoToast],
+    [drain],
   );
 
   const confirmRun = useCallback((message: string, mutation: RoomMutation) => {

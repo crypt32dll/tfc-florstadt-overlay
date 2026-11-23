@@ -11,11 +11,13 @@ import {
 import type { MatchState, RoomMutation, TeamSide } from "./types";
 
 export function createInitialState(
-  teamA = "TFC Florstadt",
+  teamA = "TFC Florstadt 1",
   teamB = "",
-  colors?: {
+  opts?: {
     teamAColor?: MatchState["teamAColor"];
     teamBColor?: MatchState["teamBColor"];
+    teamALogo?: string | null;
+    teamBLogo?: string | null;
   },
 ): MatchState {
   return {
@@ -23,9 +25,12 @@ export function createInitialState(
     transitionTo: null,
     teamA: { name: teamA, score: 0 },
     teamB: { name: teamB, score: 0 },
-    teamAColor: colors?.teamAColor ?? "blue",
-    teamBColor: colors?.teamBColor ?? "red",
+    teamAColor: opts?.teamAColor ?? "blue",
+    teamBColor: opts?.teamBColor ?? "red",
+    teamALogo: opts?.teamALogo ?? null,
+    teamBLogo: opts?.teamBLogo ?? null,
     sets: { a: 0, b: 0 },
+    setScores: [],
     matchFormat: "bestOf3",
     lineupIndex: 0,
     gameType: GAME_LINEUP[0],
@@ -35,6 +40,7 @@ export function createInitialState(
     endingMessage: "Follow für die nächsten Matches aus der Wetterau.",
     history: [],
     sessionWins: { a: 0, b: 0 },
+    sessionComplete: false,
     sfxEnabled: true,
     sfxVolume: 0.7,
     sfxPing: 0,
@@ -105,10 +111,15 @@ function completeSet(state: MatchState, winner: TeamSide): MatchState {
     a: state.sessionWins.a + (winner === "a" ? 1 : 0),
     b: state.sessionWins.b + (winner === "b" ? 1 : 0),
   };
+  const setScores = [
+    ...(state.setScores ?? []),
+    { a: state.teamA.score, b: state.teamB.score },
+  ];
   // Pause clock at set end (game end resets via completeGame)
   let next: MatchState = pauseTimer({
     ...resetGoals(state),
     sets,
+    setScores,
     sessionWins,
   });
 
@@ -123,6 +134,7 @@ function completeGame(state: MatchState): MatchState {
   const elapsedMs = getElapsedMs(state);
   const nextIndex = Math.min(state.lineupIndex + 1, GAME_LINEUP.length - 1);
   const advanced = state.lineupIndex < GAME_LINEUP.length - 1;
+  const sessionComplete = !advanced;
 
   return {
     ...state,
@@ -132,6 +144,7 @@ function completeGame(state: MatchState): MatchState {
         teamB: state.teamB.name,
         scoreA: state.sets.a,
         scoreB: state.sets.b,
+        setScores: state.setScores ?? [],
         elapsedMs,
         finishedAt: Date.now(),
         gameType: state.gameType,
@@ -140,13 +153,15 @@ function completeGame(state: MatchState): MatchState {
       ...state.history,
     ].slice(0, 20),
     sets: { a: 0, b: 0 },
+    setScores: [],
     teamA: { ...state.teamA, score: 0 },
     teamB: { ...state.teamB, score: 0 },
     timer: { running: false, startedAt: null, elapsedMs: 0 },
     lineupIndex: advanced ? nextIndex : state.lineupIndex,
     gameType: GAME_LINEUP[advanced ? nextIndex : state.lineupIndex],
+    sessionComplete,
     activeView: "transition",
-    transitionTo: "standings",
+    transitionTo: sessionComplete ? "ending" : "standings",
   };
 }
 
@@ -190,9 +205,23 @@ export function applyMutation(
     }
     case "setName": {
       const key = mutation.side === "a" ? "teamA" : "teamB";
+      const prevName = state[key].name;
+      const nextName = mutation.name;
+      if (prevName === nextName) return state;
+      // History freezes names at game end — keep Zwischenstand in sync on rename.
+      const history = state.history.map((game) => {
+        if (mutation.side === "a" && game.teamA === prevName) {
+          return { ...game, teamA: nextName };
+        }
+        if (mutation.side === "b" && game.teamB === prevName) {
+          return { ...game, teamB: nextName };
+        }
+        return game;
+      });
       return bump({
         ...state,
-        [key]: { ...state[key], name: mutation.name },
+        [key]: { ...state[key], name: nextName },
+        history,
       });
     }
     case "timer": {
@@ -231,9 +260,11 @@ export function applyMutation(
         teamA: { ...state.teamA, score: 0 },
         teamB: { ...state.teamB, score: 0 },
         sets: { a: 0, b: 0 },
+        setScores: [],
         lineupIndex: 0,
         gameType: GAME_LINEUP[0],
         sessionWins: { a: 0, b: 0 },
+        sessionComplete: false,
         history: [],
         timer: { running: false, startedAt: null, elapsedMs: 0 },
         activeView:
@@ -251,11 +282,18 @@ export function applyMutation(
         teamB: { name: mutation.teamB.trim(), score: 0 },
         teamAColor: mutation.teamAColor ?? state.teamAColor,
         teamBColor: mutation.teamBColor ?? state.teamBColor,
+        teamALogo:
+          mutation.teamALogo !== undefined
+            ? mutation.teamALogo
+            : state.teamALogo,
+        teamBLogo: mutation.teamBLogo !== undefined ? mutation.teamBLogo : null,
         matchFormat: mutation.matchFormat ?? state.matchFormat,
         sets: { a: 0, b: 0 },
+        setScores: [],
         lineupIndex: 0,
         gameType: GAME_LINEUP[0],
         sessionWins: { a: 0, b: 0 },
+        sessionComplete: false,
         history: [],
         timer: { running: false, startedAt: null, elapsedMs: 0 },
         activeView: "startingSoon",
@@ -263,8 +301,33 @@ export function applyMutation(
       });
     }
     case "finishMatch": {
-      // End current game with current set score (manual)
-      return bump(completeGame(state));
+      // Fold in an unfinished set (goals) so history keeps the detail.
+      let next = state;
+      if (state.teamA.score > 0 || state.teamB.score > 0) {
+        const lead = winnerSide(state.teamA.score, state.teamB.score);
+        next = {
+          ...state,
+          setScores: [
+            ...(state.setScores ?? []),
+            { a: state.teamA.score, b: state.teamB.score },
+          ],
+          sets: lead
+            ? {
+                a: state.sets.a + (lead === "a" ? 1 : 0),
+                b: state.sets.b + (lead === "b" ? 1 : 0),
+              }
+            : state.sets,
+          sessionWins: lead
+            ? {
+                a: state.sessionWins.a + (lead === "a" ? 1 : 0),
+                b: state.sessionWins.b + (lead === "b" ? 1 : 0),
+              }
+            : state.sessionWins,
+          teamA: { ...state.teamA, score: 0 },
+          teamB: { ...state.teamB, score: 0 },
+        };
+      }
+      return bump(completeGame(next));
     }
     case "finishSet": {
       const deciding = isDecidingSet(state);
@@ -322,12 +385,21 @@ export function applyMutation(
         teamB: game.teamA,
         scoreA: game.scoreB,
         scoreB: game.scoreA,
+        setScores: game.setScores?.map((set) => ({ a: set.b, b: set.a })),
       }));
       return bump({
         ...state,
         teamA: state.teamB,
         teamB: state.teamA,
+        teamAColor: state.teamBColor,
+        teamBColor: state.teamAColor,
+        teamALogo: state.teamBLogo,
+        teamBLogo: state.teamALogo,
         sets: { a: state.sets.b, b: state.sets.a },
+        setScores: (state.setScores ?? []).map((set) => ({
+          a: set.b,
+          b: set.a,
+        })),
         sessionWins: { a: state.sessionWins.b, b: state.sessionWins.a },
         history,
       });
@@ -359,6 +431,11 @@ export function applyMutation(
       const key = mutation.side === "a" ? "teamAColor" : "teamBColor";
       if (state[key] === mutation.color) return state;
       return bump({ ...state, [key]: mutation.color });
+    }
+    case "setTeamLogo": {
+      const key = mutation.side === "a" ? "teamALogo" : "teamBLogo";
+      if (state[key] === mutation.logoUrl) return state;
+      return bump({ ...state, [key]: mutation.logoUrl });
     }
     case "setMatchFormat": {
       return bump({ ...state, matchFormat: mutation.format });
@@ -392,6 +469,7 @@ export function applyMutation(
         teamA: { ...state.teamA, score: 0 },
         teamB: { ...state.teamB, score: 0 },
         sets: { a: 0, b: 0 },
+        setScores: [],
         timer: { running: false, startedAt: null, elapsedMs: 0 },
       });
     }
